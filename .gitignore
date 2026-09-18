@@ -1,2 +1,19 @@
-.idea
-.xml
+# Python bytecode
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Django local database
+db.sqlite3
+
+# PyCharm / IntelliJ IDE configurations
+.idea/
+
+# Virtual Environments
+venv312/
+venv/
+ENV/
+
+# Local environment variables / secrets
+.env

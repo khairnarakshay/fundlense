@@ -1,7 +1,10 @@
 from django.db import models
+from django.db.models import JSONField
+
 from core.models import BaseModel
-from core.choices import FUND_TYPE_CHOICES, OPTION_CHOICES, PLAN_CHOICES, SCHEME_RISK_CHOICES,RTA_AGENT_CHOICES
-# Create your models here.
+from core.choices import FUND_TYPE_CHOICES, OPTION_CHOICES, PLAN_CHOICES, SCHEME_RISK_CHOICES, RTA_AGENT_CHOICES
+
+
 class FundCategory(BaseModel):
     name = models.CharField(max_length=255, unique=True)
     description = models.CharField(max_length=255, blank=True, null=True)
@@ -9,10 +12,11 @@ class FundCategory(BaseModel):
 
     class Meta:
         db_table = "fund_category"
-        ordering = ["rank", "name"]
+        ordering = ["name"]
 
     def __str__(self):
         return self.name
+
 
 class FundSubCategory(BaseModel):
     category = models.ForeignKey(FundCategory, on_delete=models.PROTECT, related_name="subcategories")
@@ -20,31 +24,24 @@ class FundSubCategory(BaseModel):
     description = models.CharField(max_length=255, blank=True, null=True)
     horizon = models.CharField(max_length=255, blank=True, null=True)
     is_show = models.BooleanField(default=True)
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
         db_table = "fund_subcategory"
-        ordering = ["rank", "name"]
-
+        ordering = ["name"]
         constraints = [
-            models.UniqueConstraint(
-                fields=["category", "name"],
-                name="unique_subcategory_per_category"
-            )
+            models.UniqueConstraint(fields=["category", "name"], name="unique_subcategory_per_category")
         ]
 
     def __str__(self):
         return f"{self.category.name} - {self.name}"
 
 
-
 class MutualFundAMC(BaseModel):
     name = models.CharField(max_length=255, unique=True)
+    bse_amc_code = models.CharField(max_length=100, blank=True, null=True, unique=True)  # Maps to BSE 'AMC Code'
     website = models.URLField(blank=True, null=True)
     logo = models.ImageField(upload_to="amc_logos/", blank=True, null=True)
     is_active = models.BooleanField(default=True)
-
 
     class Meta:
         db_table = "mutual_fund_amc"
@@ -54,19 +51,11 @@ class MutualFundAMC(BaseModel):
         return self.name
 
 
-# ==========================================
-# 1. THE PARENT FUND MASTER
-# ==========================================
 class MutualFundMaster(models.Model):
-    """
-    Represents the main pool of money.
-    These fields are identical for both Direct and Regular versions of a fund.
-    """
     fund_house = models.ForeignKey(MutualFundAMC, on_delete=models.PROTECT, related_name="fund_masters")
     category = models.ForeignKey(FundSubCategory, on_delete=models.PROTECT, related_name="fund_masters")
-    master_name = models.CharField(max_length=255)  # e.g. "Parag Parikh Flexi Cap Fund"
+    master_name = models.CharField(max_length=255)
 
-    # Shared historical or descriptive attributes
     launch_date = models.DateField(null=True, blank=True)
     nfo_dates = models.DateField(null=True, blank=True)
     nfo_end_date = models.DateField(null=True, blank=True)
@@ -74,13 +63,12 @@ class MutualFundMaster(models.Model):
     stated_benchmark = models.CharField(max_length=255, null=True, blank=True)
     investment_objective = models.TextField(null=True, blank=True)
     fund_manager = models.CharField(max_length=255, null=True, blank=True)
-    managed_From = models.CharField(max_length=100, null=True, blank=True)
+    managed_from = models.CharField(max_length=100, null=True, blank=True)
 
-    # Classification / UI triggers shared by the whole umbrella fund
     classification = models.CharField(max_length=100, null=True, blank=True)
-    sector = models.CharField(max_length=100, null=True, blank=True)  # e.g. Pharma (if sectoral)
+    sector = models.CharField(max_length=100, null=True, blank=True)
     information = models.TextField(null=True, blank=True)
-    showonsite = models.BooleanField(default=True)
+    show_on_site = models.BooleanField(default=True)
 
     class Meta:
         db_table = "mutual_fund_master"
@@ -89,34 +77,29 @@ class MutualFundMaster(models.Model):
         return self.master_name
 
 
-# ==========================================
-# 2. THE INVESTABLE TRANSACTIONAL SCHEME
-# ==========================================
 class MutualFundsScheme(models.Model):
     """
-    Represents the actual transactable entity you buy.
-    Each row has unique AMFI/ISIN codes and distinct transaction limits.
+    Enhanced to precisely track BSE StAR MF transactional data.
     """
     fund_master = models.ForeignKey(MutualFundMaster, on_delete=models.PROTECT, related_name="schemes")
-    scheme_name = models.CharField(max_length=255)  # e.g., "Parag Parikh Flexi Cap Fund - Direct - Growth"
+    scheme_name = models.CharField(max_length=255)
 
-    # Plan Options
-    fund_Type = models.CharField(max_length=3, choices=FUND_TYPE_CHOICES, default="", verbose_name="Fund Type")
-    option = models.CharField(max_length=3, choices=OPTION_CHOICES, blank=True, null=True, verbose_name="Option")
-    plans = models.CharField(max_length=3, choices=PLAN_CHOICES, blank=True, null=True)
+    fund_type = models.CharField(max_length=30, choices=FUND_TYPE_CHOICES, default="", verbose_name="Fund Type")
+    option = models.CharField(max_length=30, choices=OPTION_CHOICES, blank=True, null=True, verbose_name="Option")
+    plans = models.CharField(max_length=30, choices=PLAN_CHOICES, blank=True, null=True)
 
-    # Unique Regulated System IDs
-    amfi_code = models.CharField(max_length=100, unique=True)
-    scheme_code = models.CharField(max_length=100, null=True, blank=True)  # Separated AMC Scheme code
-    isin_code = models.CharField(max_length=100, null=True, blank=True)
-    isin_payout = models.CharField(max_length=100, null=True, blank=True)
-    isin_reinvest = models.CharField(max_length=100, null=True, blank=True)
+    # Core Identifiers
+    amfi_code = models.CharField(max_length=100, unique=True, null=True,
+                                 blank=True)  # Kept nullable since BSE file lacks AMFI natively
+    bse_unique_no = models.IntegerField(unique=True, db_index=True)  # Raw BSE Unique No
+    scheme_code = models.CharField(max_length=100, db_index=True)  # BSE Scheme Code (e.g., '02G-L1')
+    amc_scheme_code = models.CharField(max_length=100, null=True, blank=True)
+    isin_code = models.CharField(max_length=12, db_index=True)  # Strict 12-char standard ISIN
 
     # RTA structural details
-    rta_code = models.CharField(max_length=100, null=True, blank=True)
-    rta_scheme_code = models.CharField(max_length=100, null=True, blank=True)
-    rta_scheme_code_payout = models.CharField(max_length=100, null=True, blank=True)
-    register_agent = models.CharField(max_length=3, choices=RTA_AGENT_CHOICES, blank=True, null=True)
+    rta_code = models.CharField(max_length=100, null=True, blank=True)  # Standard RTA identification code
+    rta_scheme_code = models.CharField(max_length=100, null=True, blank=True)  # Maps to BSE 'RTA Scheme Code'
+    register_agent = models.CharField(max_length=30, choices=RTA_AGENT_CHOICES, blank=True, null=True)
 
     # Risk and Value Metrics
     face_value = models.DecimalField(max_digits=15, decimal_places=4, null=True, blank=True)
@@ -124,13 +107,46 @@ class MutualFundsScheme(models.Model):
     ranking = models.IntegerField(null=True, blank=True)
     rank = models.PositiveIntegerField(default=0)
 
-    # Financial & Purchase Rules (Direct and Regular have completely different limits)
-    available_for_investment = models.BooleanField(default=True)
-    min_investment = models.DecimalField(max_digits=15, decimal_places=2, null=True, blank=True)
-    additional_investment = models.DecimalField(max_digits=15, decimal_places=2, null=True, blank=True)
+    # --- NEW: BSE Extended Purchase Controls ---
+    purchase_allowed = models.BooleanField(default=True)
+    purchase_transaction_mode = models.CharField(max_length=10,
+                                                 help_text="DP (Demat & Physical) / D (Demat) / P (Physical)")
+    min_investment = models.DecimalField(max_digits=15, decimal_places=3, null=True,
+                                         blank=True)  # BSE specifies up to 3 decimals
+    additional_investment = models.DecimalField(max_digits=15, decimal_places=3, null=True, blank=True)
+    max_purchase_amount = models.DecimalField(max_digits=15, decimal_places=3, default=0.000)
+    purchase_amount_multiplier = models.DecimalField(max_digits=15, decimal_places=3, null=True, blank=True)
+    purchase_cutoff_time = models.TimeField(null=True, blank=True)
+
+    # --- NEW: BSE Extended Redemption Controls ---
+    redemption_allowed = models.BooleanField(default=True)
+    redemption_transaction_mode = models.CharField(max_length=10, blank=True, null=True)
+    min_redemption_qty = models.DecimalField(max_digits=15, decimal_places=3, null=True, blank=True)
+    redemption_qty_multiplier = models.DecimalField(max_digits=15, decimal_places=3, null=True, blank=True)
+    max_redemption_qty = models.DecimalField(max_digits=15, decimal_places=3, null=True, blank=True)
+    min_redemption_amount = models.DecimalField(max_digits=15, decimal_places=3, null=True, blank=True)
+    max_redemption_amount = models.DecimalField(max_digits=15, decimal_places=3, null=True, blank=True)
+    redemption_amount_multiple = models.DecimalField(max_digits=15, decimal_places=3, null=True, blank=True)
+    redemption_cutoff_time = models.TimeField(null=True, blank=True)
+
+    # --- NEW: Operational Flags & Dates ---
+    settlement_type = models.CharField(max_length=10, help_text="T1, T2, L1 etc.")
+    is_amc_active = models.BooleanField(default=True)
+    is_dividend_reinvestment = models.BooleanField(default=False)
     is_sip_allowed = models.BooleanField(default=False)
-    min_sip_amount = models.DecimalField(max_digits=15, decimal_places=2, null=True, blank=True)
-    exit_load = models.TextField(null=True, blank=True)
+    is_stp_allowed = models.BooleanField(default=False)
+    is_swp_allowed = models.BooleanField(default=False)
+    is_switch_allowed = models.BooleanField(default=False)
+
+    start_date = models.DateField(null=True, blank=True)
+    end_date = models.DateField(null=True, blank=True)
+    reopening_date = models.DateField(null=True, blank=True)
+
+    has_exit_load = models.BooleanField(default=False)
+    exit_load_value = models.DecimalField(max_digits=10, decimal_places=2, default=0.00)
+    has_lock_in = models.BooleanField(default=False)
+    lock_in_period_days = models.IntegerField(default=0)
+    channel_partner_code = models.CharField(max_length=50, null=True, blank=True)
 
     created = models.DateTimeField(auto_now_add=True)
     updated = models.DateTimeField(auto_now=True)
@@ -140,76 +156,76 @@ class MutualFundsScheme(models.Model):
         ordering = ["scheme_name"]
         indexes = [
             models.Index(fields=["scheme_name"]),
-            models.Index(fields=["amfi_code"]),
+            models.Index(fields=["bse_unique_no"]),
             models.Index(fields=["scheme_code"]),
             models.Index(fields=["isin_code"]),
-            models.Index(fields=["available_for_investment"]),
+            models.Index(fields=["purchase_allowed"]),
         ]
 
     def __str__(self):
         return self.scheme_name
 
+from django.db import models
+from django.db.models import JSONField
 
-# ==========================================
-# 3. PORTFOLIO STATISTICS (TIME-SERIES)
-# ==========================================
-class MutualFundPortfolioStat(models.Model):
-    """
-    All portfolio details are preserved.
-    By linking to FundMaster, we capture these stats once for all sub-schemes.
-    """
-    fund_master = models.ForeignKey(MutualFundMaster, on_delete=models.PROTECT, related_name="portfolio_statistics")
-    as_on_date = models.DateField(null=True, blank=True)
 
-    # Asset Allocation Weights
-    equity = models.DecimalField(max_digits=7, decimal_places=4, null=True, blank=True)
-    debt = models.DecimalField(max_digits=7, decimal_places=4, null=True, blank=True)
-    others = models.DecimalField(max_digits=7, decimal_places=4, null=True, blank=True)
-    asset_allocation = models.JSONField(default=dict, blank=True)
-    market_cap_weightage = models.JSONField(default=dict, blank=True)
+class MutualFundportfolioStat(models.Model):
 
-    # Debt Maturities Metrics
-    avarage_maturity = models.DecimalField(max_digits=15, decimal_places=4, null=True, blank=True)
-    modified_duration = models.DecimalField(max_digits=15, decimal_places=4, null=True, blank=True)
-    yield_to_maturity = models.DecimalField(max_digits=15, decimal_places=4, null=True, blank=True)
+    fund = models.ForeignKey("mutual_fund.MutualFundMaster", on_delete=models.CASCADE, related_name="stat")
 
-    # Fund Performance Data
-    aum = models.DecimalField(max_digits=20, decimal_places=2, null=True, blank=True)
-    portfolio_turnover = models.DecimalField(max_digits=15, decimal_places=4, null=True, blank=True)
-    price_earning = models.DecimalField(max_digits=15, decimal_places=4, null=True, blank=True)
-    price_to_bookval = models.DecimalField(max_digits=15, decimal_places=4, null=True, blank=True)
-    expense_ratio = models.DecimalField(max_digits=10, decimal_places=4, null=True, blank=True)
+    # ---------------- Debt-fund metrics ----------------------------------
+    avarage_maturity  = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
+    modified_duration = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
+    yield_to_maturity = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
 
-    # 52 Week Tracking Metrics
-    _52_week_low_nav = models.DecimalField(max_digits=15, decimal_places=4, null=True, blank=True)
-    _52_week_low_nav_date = models.DateField(null=True, blank=True)
-    _52_week_high_nav = models.DecimalField(max_digits=15, decimal_places=4, null=True, blank=True)
+    # ---------------- Size & valuation -----------------------------------
+    aum                = models.DecimalField(max_digits=20, decimal_places=2, null=True, blank=True)
+    portfolio_turnover = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
+    price_earning      = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
+    price_to_bookval   = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
+
+    # ---------------- JSON blobs -----------------------------------------
+
+    asset_allocation     = JSONField(null=True, blank=True)
+    market_cap_weightage = JSONField(null=True, blank=True)
+    holdings             = JSONField(null=True, blank=True)
+    sectors              = JSONField(null=True, blank=True)
+
+    # ---------------- Descriptive text -----------------------------------
+    scheme_category      = models.CharField(max_length=255, null=True, blank=True)
+    scheme_categorylabel = models.CharField(max_length=255, null=True, blank=True)
+    scheme_structure     = models.CharField(max_length=255, null=True, blank=True)
+    scheme_risk          = models.CharField(max_length=255, null=True, blank=True)
+    benchmark_index      = models.CharField(max_length=255, null=True, blank=True)
+    exit_load_msg        = models.TextField(null=True, blank=True)
+    fund_manager         = models.CharField(max_length=255, null=True, blank=True)
+
+    # ---------------- 52-week NAV & dates --------------------------------
+    _52_week_low_nav       = models.DecimalField(max_digits=15, decimal_places=4, null=True, blank=True)
+    _52_week_low_nav_date  = models.DateField(null=True, blank=True)
+    _52_week_high_nav      = models.DecimalField(max_digits=15, decimal_places=4, null=True, blank=True)
     _52_week_high_nav_date = models.DateField(null=True, blank=True)
 
-    # JSON Arrays & Meta Records
-    holdings = models.JSONField(default=list, blank=True)
-    sectors = models.JSONField(default=dict, blank=True)
+    # ---------------- Inception & expense ratio --------------------------
+    inception_date = models.DateField(null=True, blank=True)
+    expense_ratio  = models.DecimalField(max_digits=10, decimal_places=4, null=True, blank=True)
+
+    # ---------------- Status ---------------------------------------------
     nav_closed = models.BooleanField(default=False)
-    raw_data = models.JSONField(default=dict, blank=True)
 
     created = models.DateTimeField(auto_now_add=True)
     updated = models.DateTimeField(auto_now=True)
 
     class Meta:
         db_table = "mutual_fund_portfolio_stat"
-        ordering = ["-as_on_date", "-updated"]
-        constraints = [
-            models.UniqueConstraint(
-                fields=["fund_master", "as_on_date"],
-                name="unique_master_portfolio_date",
-            ),
-        ]
+        ordering = ["-updated"]
         indexes = [
-            models.Index(fields=["fund_master"]),
-            models.Index(fields=["as_on_date"]),
-            models.Index(fields=["fund_master", "as_on_date"]),
+            models.Index(fields=["fund"]),
+            models.Index(fields=["nav_closed"]),
+        ]
+        constraints = [
+            models.UniqueConstraint(fields=["fund"], name="unique_stat_per_fund"),
         ]
 
     def __str__(self):
-        return f"{self.fund_master.master_name} Portfolio Statistics"
-
+        return f"Stat – {self.fund.master_name}"

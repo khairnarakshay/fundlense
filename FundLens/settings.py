@@ -43,6 +43,7 @@ INSTALLED_APPS = [
     'accounts',
     'permission',
     'core',
+    'mutual_fund',
 ]
 
 
@@ -83,7 +84,7 @@ WSGI_APPLICATION = 'FundLens.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql_psycopg2',
-        'NAME': 'fundlens',  #
+        'NAME': 'lense',  #
         'USER': 'postgres',  # db username
         'PASSWORD': 'password',  # password for user
         'HOST': 'localhost',

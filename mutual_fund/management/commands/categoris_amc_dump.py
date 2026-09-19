@@ -5,6 +5,7 @@ from django.db import transaction
 
 # Adjust these imports to match your actual Django app name
 from mutual_fund.models import FundCategory, FundSubCategory, MutualFundAMC
+import re
 
 logger = logging.getLogger(__name__)
 
@@ -64,47 +65,63 @@ class Command(BaseCommand):
 
                 self.stdout.write(self.style.SUCCESS("✅ Categories and Subcategories seeded successfully."))
 
-                # --- STEP 2: EXTRACT AND DUMP AMC NAMES FROM AMFI ---
-                self.stdout.write("🌐 Connecting to AMFI Repository to extract AMC names...")
-                url = "https://amfiindia.com"
-                response = requests.get(url, timeout=30)
+                # --- STEP 2: EXTRACT AND DUMP AMC DATA FROM AMFI ---
+                self.stdout.write("🌐 Connecting to AMFI to extract AMC master data...")
 
-                if response.status_code != 200:
-                    raise Exception("Unable to reach AMFI server repository endpoint.")
+                from amfipy import AMFIClient
 
-                amc_names = set()
+                client = AMFIClient()
 
-                # Process line by line using your exact extraction logic
-                for line in response.text.split('\n'):
-                    cleaned_line = line.strip()
+                try:
+                    filters = client.fund_performance.filters()
+                    amc_list = filters.get("mutualFundList", [])
+                except Exception as exc:
+                    raise Exception(f"Unable to retrieve AMC master data from AMFI: {exc}")
 
-                    # AMFI marks an AMC section using lines that end with 'Mutual Fund' or 'Asset Management'
-                    if cleaned_line and (cleaned_line.endswith("Mutual Fund") or "Asset Management" in cleaned_line):
-                        # Ignore operational row headers or specific subcategories
-                        if ";" not in cleaned_line and "Open-Ended" not in cleaned_line and "Close-Ended" not in cleaned_line:
-                            amc_names.add(cleaned_line)
+                if not amc_list:
+                    raise Exception(
+                        "AMFI returned an empty AMC list. "
+                        "No AMC records were modified."
+                    )
 
-                # Sort alphabetically
-                sorted_amcs = sorted(list(amc_names))
-                self.stdout.write(f"🏭 Total AMCs accurately identified: {len(sorted_amcs)}. Syncing with database...")
+                self.stdout.write(
+                    f"🏭 Total AMCs received from AMFI: {len(amc_list)}. "
+                    "Syncing with database..."
+                )
 
                 new_amcs_count = 0
-                for amc_name in sorted_amcs:
-                    # update_or_create prevents IntegrityErrors on unique constraints
+                existing_amcs_count = 0
+
+                for amc_data in amc_list:
+                    amc_name = str(amc_data.get("name", "")).strip()
+                    amfi_id = amc_data.get("id")
+
+                    if not amc_name:
+                        continue
+
                     amc, created = MutualFundAMC.objects.update_or_create(
                         name=amc_name,
                         defaults={
-                            "is_active": True
-                        }
+                            "is_active": True,
+                        },
                     )
+
                     if created:
                         new_amcs_count += 1
-                        self.stdout.write(f"   ➕ Created Record: {amc_name}")
+                        self.stdout.write(
+                            f"   ➕ Created AMC: {amc_name} "
+                            f"(AMFI ID: {amfi_id})"
+                        )
+                    else:
+                        existing_amcs_count += 1
 
-                self.stdout.write(self.style.SUCCESS(
-                    f"✅ Successfully processed {len(sorted_amcs)} AMCs ({new_amcs_count} new records added)."))
-
-            self.stdout.write(self.style.SUCCESS("🎉 Unified Master Seeding Complete!"))
+                self.stdout.write(
+                    self.style.SUCCESS(
+                        f"✅ Successfully processed {len(amc_list)} AMCs "
+                        f"({new_amcs_count} new, "
+                        f"{existing_amcs_count} existing)."
+                    )
+                )
 
         except Exception as e:
-            self.stdout.write(self.style.ERROR(f"❌ Execution failed and database rolled back: {str(e)}"))
+            self.stdout.write(self.style.ERROR(e))

@@ -89,7 +89,9 @@ class MutualFundsScheme(models.Model):
     bse_unique_no = models.IntegerField(unique=True, db_index=True)
     scheme_code = models.CharField(max_length=100, db_index=True)
     amc_scheme_code = models.CharField(max_length=100, null=True, blank=True)
-    isin_code = models.CharField(max_length=12, db_index=True)
+    isin_code = models.CharField(max_length=12, null=True, blank=True, db_index=True)
+    isin_payout = models.CharField(max_length=12, null=True, blank=True, db_index=True)
+    isin_reinvest = models.CharField(max_length=12, null=True, blank=True, db_index=True)
 
     # ---------------- RTA Information ----------------
     rta_code = models.CharField(max_length=100, null=True, blank=True)

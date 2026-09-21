@@ -11,6 +11,8 @@ import requests
 
 from django.core.management.base import BaseCommand, CommandError
 from django.db import transaction
+from datetime import datetime
+from decimal import Decimal, InvalidOperation
 from django.utils.text import slugify
 
 from mutual_fund.models import (
@@ -114,6 +116,31 @@ def fetch_fund_house_schemes(fund_house_name):
         )
     return payload.get("data", []) or []
 
+def _parse_nav(value):
+    """Convert an API NAV value into Decimal while preserving missing values."""
+    value = _clean(value)
+    if value is None:
+        return None
+
+    try:
+        return Decimal(value)
+    except (InvalidOperation, ValueError):
+        return None
+
+
+def _parse_nav_date(value):
+    """Convert supported API NAV date formats into a Python date."""
+    value = _clean(value)
+    if value is None:
+        return None
+
+    for date_format in ("%d-%m-%Y", "%Y-%m-%d", "%d/%m/%Y", "%Y/%m/%d"):
+        try:
+            return datetime.strptime(value, date_format).date()
+        except ValueError:
+            continue
+
+    return None
 
 # ---------------------------------------------------------------------------
 # Command
@@ -182,11 +209,13 @@ class Command(BaseCommand):
                         self._upsert_scheme(amc, data)
                         grand_total += 1
                     except Exception as exc:      # keep loop going
+                        import traceback
                         self.stderr.write(
                             self.style.ERROR(
                                 f"   Failed {data.get('schemeCode')}: {exc}"
                             )
                         )
+                        traceback.print_exc()
 
             time.sleep(SLEEP_BETWEEN_REQUESTS)
 
@@ -251,19 +280,32 @@ class Command(BaseCommand):
         # master_name + first word of plan   →  "360 ONE Flexicap Fund - Direct"
         scheme_display_name = scheme_name
         first_plan_word = _first_word(plan_raw)
+        option_display_name = _first_word(option_raw)
         if first_plan_word:
-            scheme_display_name = f"{scheme_name} - {first_plan_word}"
+            scheme_display_name = f"{scheme_name} - {first_plan_word}-{option_display_name}"
+
+
+        # NAV parsing
+        current_nav = _parse_nav(data.get("latestNav"))
+        current_nav_date = _parse_nav_date(data.get("latestNavDate"))
 
         # BSE unique no is not in API → use numeric schemeCode as placeholder
         bse_unique_no = int(scheme_code) if scheme_code.isdigit() else 0
 
-        isin = (
-            _clean(data.get("isinDivPayoutOrGrowth"))
-            or _clean(data.get("isinDivPayout"))
-            or _clean(data.get("isinDivReinvestment"))
-            or ""
-        )
-        isin = isin[:12]  # enforce 12-char column
+        isin = _clean(data.get("isinDivPayoutOrGrowth"))
+        isin_payout = _clean(data.get("isinDivPayout"))
+        isin_reinvest = _clean(data.get("isinDivReinvestment"))
+
+
+
+        if isin:
+            isin = isin[:12]
+
+        if isin_payout:
+            isin_payout = isin_payout[:12]
+
+        if isin_reinvest:
+            isin_reinvest = isin_reinvest[:12]
 
         defaults = {
             "fund_master": master,
@@ -275,6 +317,10 @@ class Command(BaseCommand):
             "bse_unique_no": bse_unique_no,
             "scheme_code": scheme_code,
             "isin_code": isin,
+            "isin_payout": isin_payout,
+            "isin_reinvest": isin_reinvest,
+            "current_nav": current_nav,
+            "current_nav_date": current_nav_date,
             "purchase_transaction_mode": "DP",
             "settlement_type": "T1",
             "is_amc_active": True,
@@ -283,7 +329,7 @@ class Command(BaseCommand):
         }
 
         scheme, created = MutualFundsScheme.objects.update_or_create(
-            bse_unique_no=bse_unique_no,
+            amfi_code=scheme_code,
             defaults=defaults,
         )
 

@@ -5,7 +5,7 @@ from .models import (
     MutualFundAMC,
     MutualFundMaster,
     MutualFundsScheme,
-    MutualFundPortfolioStat,
+    MutualFundPortfolioStat, MutualFundNAV, MutualFundReturnStat,
 )
 
 
@@ -182,3 +182,56 @@ class MutualFundPortfolioStatAdmin(admin.ModelAdmin):
     search_fields = ("scheme__scheme_name", "scheme__isin_code")
     autocomplete_fields = ("scheme",)
     readonly_fields = ("created", "updated")
+
+
+
+
+@admin.register(MutualFundNAV)
+class MutualFundNAVAdmin(admin.ModelAdmin):
+    list_display = ("scheme", "nav_date", "nav", "is_carry_forward")
+    list_filter = ("is_carry_forward", "nav_date", "scheme")
+    search_fields = ("scheme__name",)  # Assumes MutualFundsScheme has a 'name' field
+    date_hierarchy = "nav_date"
+    ordering = ("-nav_date", "scheme")
+    list_per_page = 50
+
+    # Optimization to avoid N+1 queries in admin list view
+    def get_queryset(self, request):
+        return super().get_queryset(request).select_related("scheme")
+
+
+@admin.register(MutualFundReturnStat)
+class MutualFundReturnStatAdmin(admin.ModelAdmin):
+    list_display = ("scheme", "as_of_date", "latest_nav", "ret_1y", "ret_3y", "ret_5y")
+    list_filter = ("as_of_date", "scheme")
+    search_fields = ("scheme__name",)
+    date_hierarchy = "as_of_date"
+    ordering = ("scheme",)
+
+    # Grouped fields inside the edit form for better UI layout
+    fieldsets = (
+        (
+            "Core Information",
+            {"fields": ("scheme", "as_of_date", "latest_nav", "first_nav_date")},
+        ),
+        (
+            "Short Term Returns",
+            {"fields": ("ret_1w", "ret_1m", "ret_3m", "ret_6m", "ret_ytd")},
+        ),
+        ("Long Term Returns (Absolute & CAGR)", {"fields": ("ret_1y", "ret_3y", "ret_5y", "cagr_3y", "cagr_5y", "cagr_10y", "cagr_since_inception")}),
+        (
+            "Risk Metrics",
+            {
+                "fields": (
+                    "volatility_1y",
+                    "volatility_3y",
+                    "max_drawdown_1y",
+                    "max_drawdown_3y",
+                    "sharpe_3y",
+                )
+            },
+        ),
+    )
+
+    def get_queryset(self, request):
+        return super().get_queryset(request).select_related("scheme")

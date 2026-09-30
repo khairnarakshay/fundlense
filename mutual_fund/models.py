@@ -237,3 +237,110 @@ class MutualFundPortfolioStat(models.Model):
 
     def __str__(self):
         return f"Stat - {self.scheme.scheme_name}"
+
+
+
+from django.db import models
+
+
+class MutualFundNAV(models.Model):
+    scheme = models.ForeignKey("MutualFundsScheme", on_delete=models.CASCADE, related_name="navs")
+    nav_date = models.DateField()
+    nav = models.DecimalField(max_digits=15, decimal_places=4)
+    # True = no real NAV published for this date (weekend / holiday / late feed); value duplicated
+    # from the last real NAV. Overwritten automatically when the real NAV arrives.
+    is_carry_forward = models.BooleanField(default=False)
+
+    class Meta:
+        db_table = "mutual_fund_nav"
+        constraints = [
+            models.UniqueConstraint(fields=["scheme", "nav_date"], name="uq_mf_nav_scheme_date"),
+        ]
+        indexes = [models.Index(fields=["nav_date"], name="ix_mf_nav_date")]
+
+
+class MutualFundReturnStat(models.Model):
+    scheme = models.OneToOneField("MutualFundsScheme", on_delete=models.CASCADE, related_name="return_stat")
+    as_of_date = models.DateField(db_index=True)
+    latest_nav = models.DecimalField(max_digits=15, decimal_places=4)
+    first_nav_date = models.DateField(null=True, blank=True)
+
+    ret_1w = models.FloatField(null=True, blank=True)
+    ret_1m = models.FloatField(null=True, blank=True)
+    ret_3m = models.FloatField(null=True, blank=True)
+    ret_6m = models.FloatField(null=True, blank=True)
+    ret_ytd = models.FloatField(null=True, blank=True)
+    ret_1y = models.FloatField(null=True, blank=True)
+    ret_3y = models.FloatField(null=True, blank=True)
+    ret_5y = models.FloatField(null=True, blank=True)
+
+    cagr_3y = models.FloatField(null=True, blank=True)
+    cagr_5y = models.FloatField(null=True, blank=True)
+    cagr_10y = models.FloatField(null=True, blank=True)
+    cagr_since_inception = models.FloatField(null=True, blank=True)
+
+    volatility_1y = models.FloatField(null=True, blank=True)
+    volatility_3y = models.FloatField(null=True, blank=True)
+    max_drawdown_1y = models.FloatField(null=True, blank=True)
+    max_drawdown_3y = models.FloatField(null=True, blank=True)
+    sharpe_3y = models.FloatField(null=True, blank=True)
+    sortino_3y = models.FloatField(null=True, blank=True)
+
+    high_52w = models.DecimalField(max_digits=15, decimal_places=4, null=True, blank=True)
+    high_52w_date = models.DateField(null=True, blank=True)
+    low_52w = models.DecimalField(max_digits=15, decimal_places=4, null=True, blank=True)
+    low_52w_date = models.DateField(null=True, blank=True)
+    calendar_returns = models.JSONField(null=True, blank=True)
+
+    pct_1y = models.FloatField(null=True, blank=True)
+    pct_3y = models.FloatField(null=True, blank=True)
+    pct_5y = models.FloatField(null=True, blank=True)
+    updated = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = "mutual_fund_return_stat"
+        indexes = [
+            models.Index(fields=["-ret_1y"]),
+            models.Index(fields=["-cagr_3y"]),
+            models.Index(fields=["-cagr_5y"]),
+            models.Index(fields=["volatility_3y"]),
+        ]
+
+
+class MutualFundNavSyncLog(models.Model):
+    """One row per NAV date. Re-running the cron the same day updates the same row and bumps run_count."""
+    STATUS_CHOICES = [
+        ("running", "Running"),
+        ("success", "Success"),
+        ("no_data", "No real NAV for date (holiday / weekend / not yet published) - carried forward"),
+        ("failed", "Failed"),
+    ]
+    nav_date = models.DateField(unique=True)
+    status = models.CharField(max_length=10, choices=STATUS_CHOICES, default="running")
+    run_count = models.PositiveIntegerField(default=0)
+    started_at = models.DateTimeField(null=True, blank=True)
+    finished_at = models.DateTimeField(null=True, blank=True)
+
+    active_schemes = models.PositiveIntegerField(default=0)
+    rows_in_feed = models.PositiveIntegerField(default=0)
+    inserted_count = models.PositiveIntegerField(default=0)
+    updated_count = models.PositiveIntegerField(default=0)
+    carried_forward_count = models.PositiveIntegerField(default=0)
+    missing_count = models.PositiveIntegerField(default=0)
+    unmapped_count = models.PositiveIntegerField(default=0)
+    skipped_closed_count = models.PositiveIntegerField(default=0)
+    parse_error_count = models.PositiveIntegerField(default=0)
+    newly_closed_count = models.PositiveIntegerField(default=0)
+    total_closed = models.PositiveIntegerField(default=0)
+    closed_but_reporting = models.PositiveIntegerField(default=0)
+
+    stats_computed = models.PositiveIntegerField(default=0)
+    stats_failed = models.PositiveIntegerField(default=0)
+    stats_skipped_closed = models.PositiveIntegerField(default=0)
+
+    missing_amfi_codes = models.JSONField(null=True, blank=True)
+    error_message = models.TextField(blank=True, default="")
+
+    class Meta:
+        db_table = "mutual_fund_nav_sync_log"
+        ordering = ["-nav_date"]

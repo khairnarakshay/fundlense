@@ -5,9 +5,9 @@ from pathlib import Path
 import casparser
 
 
-PDF_PATH = Path(r"C:\Users\khair\Downloads\KTXXXXXX5P_01012010-20092026_CP224924376_20092026105328600.pdf")
-PDF_PASSWORD = "Password@123"
-OUTPUT_DIR = Path(r"F:\fundlense\fundlense\cas_parser\services\CAS")
+PDF_PATH = Path(r"C:\Users\USER\Downloads\CAS_01012003-11092026_CP223918482_11092026052156505.pdf")
+PDF_PASSWORD = "Cams@123"
+OUTPUT_DIR = Path(r"D:\fundlense\fundlense\cas_parser\services\CAS")
 
 
 def save_output(file_name: str, content: str) -> None:

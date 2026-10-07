@@ -21,4 +21,5 @@ urlpatterns = [
     path('admin/', admin.site.urls),
     path('accounts/v1/', include('accounts.urls')),
     path('mf/v1/', include('mutual_fund.urls')),
+    path('cas_parser/v1/', include('cas_parser.urls'))
 ]

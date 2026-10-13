@@ -1,0 +1,334 @@
+<!-- Auth Modal Overlay -->
+{% load static %}
+<div id="authModalOverlay" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-md hidden">
+    <div class="glass-panel w-full max-w-md mx-4 rounded-3xl p-6 sm:p-8 border border-cyan-500/30 shadow-2xl relative">
+
+        <!-- Close Button -->
+        <button onclick="closeAuthModal()" class="absolute top-6 right-6 text-slate-400 hover:text-white text-lg">
+            <i class="fa-solid fa-xmark"></i>
+        </button>
+
+        <!-- Header Title -->
+        <div class="mb-6">
+            <h3 id="modalTitle" class="text-2xl font-extrabold text-white">Sign In to Fundlense-AI</h3>
+            <p id="modalSubtitle" class="text-xs text-slate-400 mt-1">Enter your credentials to access your secure terminal.</p>
+        </div>
+
+        <!-- API Message / Error Alert Box -->
+        <div id="authAlertBox" class="hidden mb-4 p-3 rounded-xl text-xs font-semibold"></div>
+
+        <!-- FORM 1: LOGIN -->
+        <div id="formLogin" class="auth-form-step">
+            <form onsubmit="submitLogin(event)" class="space-y-4">
+                <div>
+                    <label class="block text-xs font-bold text-slate-300 mb-1.5 uppercase">Username / Mobile</label>
+                    <input type="text" id="loginUsername" required placeholder="8830437088" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-cyan-400">
+                </div>
+                <div>
+                    <div class="flex justify-between items-center mb-1.5">
+                        <label class="block text-xs font-bold text-slate-300 uppercase">Password</label>
+                        <button type="button" onclick="switchModalView('forgot')" class="text-xs text-cyan-400 hover:underline">Forgot?</button>
+                    </div>
+                    <input type="password" id="loginPassword" required placeholder="••••••••" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-cyan-400">
+                </div>
+                <button type="submit" class="w-full py-3.5 rounded-xl bg-gradient-to-r from-cyan-500 to-indigo-600 hover:from-cyan-400 text-white font-extrabold text-sm shadow-glow-cyan transition-all mt-2">
+                    Sign In
+                </button>
+            </form>
+            <div class="text-center mt-5 text-xs text-slate-400">
+                Don't have an account? <button onclick="switchModalView('signupStep1')" class="text-cyan-400 font-bold hover:underline">Register free</button>
+            </div>
+        </div>
+
+        <!-- FORM 2: SIGNUP STEP 1 -->
+        <div id="formSignupStep1" class="auth-form-step hidden">
+            <form onsubmit="submitSignupStep1(event)" class="space-y-4">
+                <div>
+                    <label class="block text-xs font-bold text-slate-300 mb-1.5 uppercase">Mobile Number</label>
+                    <input type="tel" id="signupMobile" required placeholder="8830437088" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-cyan-400">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-slate-300 mb-1.5 uppercase">Email Address</label>
+                    <input type="email" id="signupEmail" required placeholder="name@example.com" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-cyan-400">
+                </div>
+                <button type="submit" class="w-full py-3.5 rounded-xl bg-gradient-to-r from-cyan-500 to-indigo-600 hover:from-cyan-400 text-white font-extrabold text-sm shadow-glow-cyan transition-all mt-2">
+                    Continue to OTP Verification
+                </button>
+            </form>
+            <div class="text-center mt-5 text-xs text-slate-400">
+                Already registered? <button onclick="switchModalView('login')" class="text-cyan-400 font-bold hover:underline">Sign In</button>
+            </div>
+        </div>
+
+        <!-- FORM 3: OTP VERIFICATION -->
+        <div id="formOtpVerify" class="auth-form-step hidden">
+            <form onsubmit="submitVerifyOtp(event)" class="space-y-4">
+                <div>
+                    <label class="block text-xs font-bold text-slate-300 mb-1.5 uppercase text-center">Enter 6-Digit OTP</label>
+                    <input type="text" id="otpCode" required maxlength="6" placeholder="121653" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 text-center text-xl tracking-widest text-white focus:outline-none focus:border-cyan-400 font-mono">
+                </div>
+                <div class="flex justify-between items-center text-xs">
+                    <span id="otpTimerDisplay" class="text-amber-400 font-medium">Resend in 60s</span>
+                    <button type="button" id="resendOtpBtn" disabled onclick="triggerResendOtp()" class="text-cyan-400 font-bold hover:underline disabled:opacity-50 disabled:cursor-not-allowed">Resend OTP</button>
+                </div>
+                <button type="submit" class="w-full py-3.5 rounded-xl bg-gradient-to-r from-cyan-500 to-indigo-600 hover:from-cyan-400 text-white font-extrabold text-sm shadow-glow-cyan transition-all mt-2">
+                    Verify OTP
+                </button>
+            </form>
+        </div>
+
+        <!-- FORM 4: SET PASSWORD -->
+        <div id="formSetPassword" class="auth-form-step hidden">
+            <form onsubmit="submitSetPassword(event)" class="space-y-4">
+                <div>
+                    <label class="block text-xs font-bold text-slate-300 mb-1.5 uppercase">New Password</label>
+                    <input type="password" id="newPassword" required placeholder="Password@123" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-cyan-400">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-slate-300 mb-1.5 uppercase">Confirm Password</label>
+                    <input type="password" id="confirmPassword" required placeholder="Password@123" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-cyan-400">
+                </div>
+                <button type="submit" class="w-full py-3.5 rounded-xl bg-gradient-to-r from-cyan-500 to-indigo-600 hover:from-cyan-400 text-white font-extrabold text-sm shadow-glow-cyan transition-all mt-2">
+                    Complete & Access Terminal
+                </button>
+            </form>
+        </div>
+
+        <!-- FORM 5: FORGOT PASSWORD -->
+        <div id="formForgot" class="auth-form-step hidden">
+            <form onsubmit="submitForgotStep1(event)" class="space-y-4">
+                <div>
+                    <label class="block text-xs font-bold text-slate-300 mb-1.5 uppercase">Registered Mobile</label>
+                    <input type="tel" id="forgotMobile" required placeholder="8830437088" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-cyan-400">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-slate-300 mb-1.5 uppercase">Registered Email</label>
+                    <input type="email" id="forgotEmail" required placeholder="name@example.com" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-cyan-400">
+                </div>
+                <button type="submit" class="w-full py-3.5 rounded-xl bg-gradient-to-r from-cyan-500 to-indigo-600 hover:from-cyan-400 text-white font-extrabold text-sm shadow-glow-cyan transition-all mt-2">
+                    Send Reset OTP
+                </button>
+            </form>
+            <div class="text-center mt-5 text-xs text-slate-400">
+                Remember password? <button onclick="switchModalView('login')" class="text-cyan-400 font-bold hover:underline">Sign In</button>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+<!-- Load your global encryption utility script -->
+<script src="{% static 'js/secure_storage.js' %}"></script>
+<script>
+    function openAuthModal(viewName = 'login') {
+        document.getElementById('authModalOverlay').classList.remove('hidden');
+        switchModalView(viewName);
+    }
+
+
+    function closeAuthModal() {
+        document.getElementById('authModalOverlay').classList.add('hidden');
+        hideAlert();
+    }
+    function switchModalView(viewName) {
+        hideAlert();
+        document.querySelectorAll('.auth-form-step').forEach(el => el.classList.add('hidden'));
+        const title = document.getElementById('modalTitle');
+        const subtitle = document.getElementById('modalSubtitle');
+
+        if (viewName === 'login') {
+            document.getElementById('formLogin').classList.remove('hidden');
+            title.textContent = "Sign In to Fundlense-AI";
+            subtitle.textContent = "Enter your credentials to access your secure terminal.";
+        } else if (viewName === 'signupStep1') {
+            document.getElementById('formSignupStep1').classList.remove('hidden');
+            title.textContent = "Create Free Account";
+            subtitle.textContent = "Enter your mobile and email to receive verification OTP.";
+        } else if (viewName === 'otp') {
+            document.getElementById('formOtpVerify').classList.remove('hidden');
+            title.textContent = "Verify Security OTP";
+            subtitle.textContent = "Check your email/mobile for the 6-digit code.";
+            startCountdownTimer();
+        } else if (viewName === 'setpassword') {
+            document.getElementById('formSetPassword').classList.remove('hidden');
+            title.textContent = "Set Account Password";
+            subtitle.textContent = "Create a robust password to secure your portfolio.";
+        } else if (viewName === 'forgot') {
+            document.getElementById('formForgot').classList.remove('hidden');
+            title.textContent = "Reset Password";
+            subtitle.textContent = "Provide your registered contact info to receive reset OTP.";
+        }
+    }
+    function showAlert(message, isError = true) {
+        const box = document.getElementById('authAlertBox');
+        box.textContent = message;
+        box.classList.remove('hidden', 'bg-emerald-500/20', 'text-emerald-300', 'border', 'border-emerald-500/30', 'bg-rose-500/20', 'text-rose-300', 'border-rose-500/30');
+        if (isError) {
+            box.classList.add('bg-rose-500/20', 'text-rose-300', 'border', 'border-rose-500/30');
+        } else {
+            box.classList.add('bg-emerald-500/20', 'text-emerald-300', 'border', 'border-emerald-500/30');
+        }
+    }
+    function hideAlert() {
+        document.getElementById('authAlertBox').classList.add('hidden');
+    }
+    const csrftoken = getCookie('csrftoken');
+
+    let userState = { mobile: '', email: '' };
+    let activeOtpType = 'SIGNUP';
+    let countdownTimerRef = null;
+
+    async function submitLogin(e) {
+        e.preventDefault();
+        const username = document.getElementById('loginUsername').value.trim();
+        const password = document.getElementById('loginPassword').value;
+        try {
+           const res = await fetch('/accounts/v1/auth/login/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': csrftoken
+                },
+                body: JSON.stringify({ username, password })
+            });
+            const data = await res.json();
+            if (data.st === 200) {
+                showAlert(data.msg, false);
+                SecureStorage.setItem('access_token', data.data.access_token);
+                SecureStorage.setItem('refresh_token', data.data.refresh_token);
+                setTimeout(() => window.location.href = "/dashboard/", 800);
+            } else {
+                showAlert(data.msg || "Login failed.");
+            }
+        } catch (err) { showAlert("Network connection error."); }
+    }
+
+    async function submitSignupStep1(e) {
+        e.preventDefault();
+        userState.mobile = document.getElementById('signupMobile').value.trim();
+        userState.email = document.getElementById('signupEmail').value.trim();
+        activeOtpType = 'SIGNUP';
+        try {
+            const res = await fetch('/accounts/v1/auth/signup/', {
+                method: 'POST',
+                 headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': csrftoken
+                },
+                body: JSON.stringify({ mobile: userState.mobile, email: userState.email })
+            });
+            const data = await res.json();
+            if (data.st === 201 || data.st === 200) {
+                showAlert(data.msg, false);
+                setTimeout(() => switchModalView('otp'), 600);
+            } else { showAlert(data.msg || "Signup error."); }
+        } catch (err) { showAlert("Network connection error."); }
+    }
+
+    async function submitForgotStep1(e) {
+        e.preventDefault();
+        userState.mobile = document.getElementById('forgotMobile').value.trim();
+        userState.email = document.getElementById('forgotEmail').value.trim();
+        activeOtpType = 'FORGOT_PASSWORD';
+        try {
+            const res = await fetch('/accounts/v1/auth/resend-otp/', {
+                method: 'POST',
+                 headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': csrftoken
+                },
+                body: JSON.stringify({ mobile: userState.mobile, email: userState.email, otp_type: activeOtpType })
+            });
+            const data = await res.json();
+            if (data.st === 200) {
+                showAlert("Reset OTP sent successfully.", false);
+                setTimeout(() => switchModalView('otp'), 600);
+            } else { showAlert(data.msg || "Failed to trigger reset OTP."); }
+        } catch (err) { showAlert("Network connection error."); }
+    }
+
+    async function submitVerifyOtp(e) {
+        e.preventDefault();
+        const otp = document.getElementById('otpCode').value.trim();
+        try {
+            const res = await fetch('/accounts/v1/auth/verify-otp/', {
+                method: 'POST',
+                 headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': csrftoken
+                },
+                body: JSON.stringify({ mobile: userState.mobile, email: userState.email, otp: otp, otp_type: activeOtpType })
+            });
+            const data = await res.json();
+            if (data.st === 200) {
+                showAlert(data.msg, false);
+                window.tempVerifiedOtp = otp;
+                setTimeout(() => switchModalView('setpassword'), 600);
+            } else { showAlert(data.msg || "Invalid OTP code."); }
+        } catch (err) { showAlert("Network connection error."); }
+    }
+
+    async function triggerResendOtp() {
+        try {
+            const res = await fetch('/accounts/v1/auth/resend-otp/', {
+                method: 'POST',
+                 headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': csrftoken
+                },
+                body: JSON.stringify({ mobile: userState.mobile, email: userState.email, otp_type: activeOtpType })
+            });
+            const data = await res.json();
+            if (data.st === 200) {
+                showAlert(data.msg, false);
+                startCountdownTimer();
+            } else { showAlert(data.msg || "Could not resend OTP."); }
+        } catch (err) { showAlert("Network error."); }
+    }
+
+    async function submitSetPassword(e) {
+        e.preventDefault();
+        const password = document.getElementById('newPassword').value;
+        const confirmPassword = document.getElementById('confirmPassword').value;
+        if (password !== confirmPassword) {
+            showAlert("Passwords do not match.");
+            return;
+        }
+        try {
+            const res = await fetch('/accounts/v1/auth/set-password/', {
+                method: 'POST',
+                 headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': csrftoken
+                },
+                body: JSON.stringify({ mobile: userState.mobile, email: userState.email, otp: window.tempVerifiedOtp, otp_type: activeOtpType, password: password })
+            });
+            const data = await res.json();
+            if (data.st === 200) {
+                showAlert(data.msg, false);
+                if (data.data && data.data.access_token) {
+                    SecureStorage.setItem('access_token', data.data.access_token);
+                    SecureStorage.setItem('refresh_token', data.data.refresh_token);
+                }
+                setTimeout(() => window.location.href = "/dashboard/", 1000);
+            } else { showAlert(data.msg || "Failed to set password."); }
+        } catch (err) { showAlert("Network connection error."); }
+    }
+
+    function startCountdownTimer() {
+        let seconds = 60;
+        const display = document.getElementById('otpTimerDisplay');
+        const btn = document.getElementById('resendOtpBtn');
+        btn.disabled = true;
+        if (countdownTimerRef) clearInterval(countdownTimerRef);
+        countdownTimerRef = setInterval(() => {
+            seconds--;
+            display.textContent = `Resend in ${seconds}s`;
+            if (seconds <= 0) {
+                clearInterval(countdownTimerRef);
+                display.textContent = `Didn't receive code?`;
+                btn.disabled = false;
+            }
+        }, 1000);
+    }
+</script>

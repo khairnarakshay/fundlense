@@ -1,0 +1,686 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fundlense-AI — Institutional-Grade Mutual Fund Analytics</title>
+
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- FontAwesome & Bootstrap Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+
+    <!-- Google Fonts: Plus Jakarta Sans -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+
+    <!-- Tailwind Custom Configuration -->
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Plus Jakarta Sans', 'sans-serif'],
+                    },
+                    colors: {
+                        slateBg: '#070a12',
+                        cardBg: 'rgba(15, 23, 42, 0.75)',
+                        cyanGlow: '#06b6d4',
+                        tealGlow: '#14b8a6',
+                        indigoGlow: '#6366f1',
+                    },
+                    boxShadow: {
+                        'glow-cyan': '0 0 25px -5px rgba(6, 182, 212, 0.3)',
+                        'glow-indigo': '0 0 25px -5px rgba(99, 102, 241, 0.3)',
+                        'glow-teal': '0 0 25px -5px rgba(20, 184, 166, 0.3)',
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        body {
+            background-color: #070a12;
+            color: #f8fafc;
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            overflow-x: hidden;
+        }
+
+        /* Gradient Glow Background Mesh */
+        .bg-mesh {
+            background-image:
+                radial-gradient(circle at 50% 0%, rgba(6, 182, 212, 0.18) 0%, transparent 50%),
+                radial-gradient(circle at 85% 30%, rgba(99, 102, 241, 0.12) 0%, transparent 45%),
+                radial-gradient(circle at 15% 70%, rgba(20, 184, 166, 0.12) 0%, transparent 45%);
+        }
+
+        /* Glassmorphism Cards */
+        .glass-panel {
+            background: rgba(15, 23, 42, 0.7);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .glass-panel-interactive {
+            background: rgba(15, 23, 42, 0.75);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .glass-panel-interactive:hover {
+            border-color: rgba(6, 182, 212, 0.45);
+            box-shadow: 0 12px 30px -10px rgba(6, 182, 212, 0.25);
+            transform: translateY(-3px);
+        }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #070a12;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #1e293b;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #06b6d4;
+        }
+
+        /* Tab Transition */
+        .tab-content {
+            display: none;
+            opacity: 0;
+            transition: opacity 0.3s ease-in-out;
+        }
+        .tab-content.active {
+            display: block;
+            opacity: 1;
+        }
+    </style>
+</head>
+<body class="bg-slateBg bg-mesh min-h-screen text-slate-100 flex flex-col justify-between">
+<div style="display:none;">
+    {% csrf_token %}
+</div>
+    <header class="sticky top-0 z-50 w-full px-4 sm:px-8 lg:px-16 py-4">
+        <nav class="max-w-7xl mx-auto glass-panel rounded-2xl px-6 py-3 flex items-center justify-between shadow-2xl">
+            <!-- Brand Logo -->
+            <a href="#" class="flex items-center gap-3 text-xl font-extrabold tracking-tight text-white group">
+                <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-cyan-500 to-indigo-600 flex items-center justify-center text-white shadow-glow-cyan transition-transform group-hover:scale-105">
+                    <i class="fa-solid fa-chart-pie text-lg"></i>
+                </div>
+                <span>Fundlense<span class="text-cyan-400">-AI</span></span>
+            </a>
+
+            <!-- Desktop Nav Links -->
+            <div class="hidden md:flex items-center gap-8 text-sm font-semibold text-slate-300">
+                <a href="#analytics" class="hover:text-cyan-400 transition-colors">Analytics</a>
+                <a href="#how-it-works" class="hover:text-cyan-400 transition-colors">How It Works</a>
+                <a href="#security" class="hover:text-cyan-400 transition-colors">Security & Privacy</a>
+            </div>
+
+            <!-- Header Action Button -->
+            <div class="flex items-center gap-4">
+                <button onclick="openAuthModal('login')" class="hidden sm:inline-flex items-center px-4 py-2 rounded-xl glass-panel text-slate-200 hover:text-white font-semibold text-sm transition-all border border-slate-700">
+                    Sign In
+                </button>
+                <button onclick="openAuthModal('signupStep1')" class="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-cyan-500 to-teal-500 hover:from-cyan-400 hover:to-teal-400 text-slate-950 font-bold text-sm shadow-glow-cyan transition-all transform hover:-translate-y-0.5">
+                    <i class="fa-solid fa-bolt text-xs"></i> Get Started
+                </button>
+                <button id="mobile-menu-btn" class="md:hidden text-slate-300 hover:text-white text-xl p-1">
+                    <i class="fa-solid fa-bars"></i>
+                </button>
+            </div>
+        </nav>
+
+        <!-- Mobile Drawer Menu -->
+        <div id="mobile-menu" class="hidden md:hidden max-w-7xl mx-auto mt-2 glass-panel rounded-2xl p-5 flex flex-col gap-4 text-slate-200 font-medium">
+            <a href="#analytics" class="hover:text-cyan-400 py-1">Analytics</a>
+            <a href="#how-it-works" class="hover:text-cyan-400 py-1">How It Works</a>
+            <a href="#security" class="hover:text-cyan-400 py-1">Security & Privacy</a>
+            <a href="#hero-dashboard" class="w-full text-center py-2.5 rounded-xl bg-cyan-500 text-slate-950 font-bold text-sm">Try Live Demo</a>
+        </div>
+    </header>
+
+    <main class="flex-grow px-4 sm:px-8 lg:px-16 pt-8 pb-16">
+        <section class="max-w-6xl mx-auto text-center pt-6 pb-12">
+            <!-- Top Announcement Chip -->
+            <div class="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-slate-900/80 border border-cyan-500/30 text-cyan-300 text-xs sm:text-sm font-semibold mb-6 shadow-glow-cyan">
+                <span class="flex h-2 w-2 rounded-full bg-cyan-400 animate-ping"></span>
+                <span>Built for Indian Retail Investors • CAS PDF Analytics Engine</span>
+            </div>
+
+            <!-- Headline -->
+            <h1 class="text-4xl sm:text-6xl lg:text-7xl font-extrabold tracking-tight text-white leading-tight mb-6">
+                Your Mutual Fund Portfolio, <br class="hidden sm:inline">
+                <span class="bg-gradient-to-r from-cyan-400 via-teal-300 to-indigo-400 bg-clip-text text-transparent">Truly Analysed.</span>
+            </h1>
+
+            <!-- HIGH CONTRAST SUBTITLE (EXPLICITLY READABLE SLATE-200) -->
+            <p class="max-w-3xl mx-auto text-slate-200 sm:text-lg lg:text-xl font-normal leading-relaxed mb-8">
+                Unlock institutional-grade intelligence for your mutual fund portfolio. Upload your CAMS or KFintech statements to get deep insights on <strong class="text-white font-semibold">true XIRR</strong>, <strong class="text-white font-semibold">diversification gaps</strong>, and <strong class="text-white font-semibold">hidden risk profile gaps</strong> that help you make smarter investment decisions.
+            </p>
+
+            <!-- Hero Action Buttons -->
+            <div class="flex flex-col sm:flex-row items-center justify-center gap-4 mb-10">
+                <button onclick="openAuthModal('signupStep1')" class="w-full sm:w-auto px-8 py-4 rounded-xl bg-gradient-to-r from-cyan-500 via-teal-500 to-indigo-600 hover:from-cyan-400 hover:to-indigo-500 text-white font-extrabold text-base shadow-glow-cyan transition-all transform hover:-translate-y-0.5 flex items-center justify-center gap-3">
+                    <i class="fa-solid fa-rocket"></i> Get Started For Free
+                </button>
+                <button onclick="openAuthModal('login')" class="w-full sm:w-auto px-8 py-4 rounded-xl glass-panel hover:bg-slate-800/80 text-cyan-300 font-bold text-base border border-cyan-500/30 transition-all flex items-center justify-center gap-3">
+                    <i class="fa-solid fa-right-to-bracket text-lg"></i> Sign In to Portal
+                </button>
+            </div>
+
+            <!-- Trust Highlights -->
+            <div class="flex flex-wrap items-center justify-center gap-6 text-xs sm:text-sm text-slate-300 font-medium">
+                <span class="flex items-center gap-2"><i class="fa-solid fa-circle-check text-cyan-400"></i> Free to start</span>
+                <span class="flex items-center gap-2"><i class="fa-solid fa-shield-halved text-cyan-400"></i> Zero-Knowledge Encryption</span>
+                <span class="flex items-center gap-2"><i class="fa-solid fa-bolt text-cyan-400"></i> Works with CAMS & KFintech</span>
+            </div>
+        </section>
+
+        <section id="hero-dashboard" class="max-w-6xl mx-auto mb-24">
+            <div class="glass-panel rounded-3xl p-4 sm:p-6 lg:p-8 shadow-2xl border border-cyan-500/20 relative">
+
+                <!-- Mockup Header Controls -->
+                <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-6 border-b border-slate-800">
+                    <div class="flex items-center gap-3">
+                        <div class="flex gap-1.5">
+                            <span class="w-3 h-3 rounded-full bg-rose-500/80"></span>
+                            <span class="w-3 h-3 rounded-full bg-amber-500/80"></span>
+                            <span class="w-3 h-3 rounded-full bg-emerald-500/80"></span>
+                        </div>
+                        <span class="text-xs font-semibold text-slate-400 ml-2">Live Portfolio Intelligence Terminal</span>
+                    </div>
+
+                    <!-- Interactive Tab Switcher -->
+                    <div class="flex p-1 rounded-xl bg-slate-900/90 border border-slate-800 text-xs font-bold text-slate-400">
+                        <button onclick="switchTab('overview')" id="tab-btn-overview" class="tab-btn active px-4 py-2 rounded-lg text-white bg-gradient-to-r from-cyan-500 to-indigo-600 transition-all shadow-md">
+                            Portfolio Overview
+                        </button>
+                        <button onclick="switchTab('risk')" id="tab-btn-risk" class="tab-btn px-4 py-2 rounded-lg hover:text-white transition-all">
+                            Risk Profile Gaps
+                        </button>
+                        <button onclick="switchTab('goals')" id="tab-btn-goals" class="tab-btn px-4 py-2 rounded-lg hover:text-white transition-all">
+                            Goal Projections
+                        </button>
+                    </div>
+                </div>
+
+                <!-- TAB 1: OVERVIEW -->
+                <div id="tab-overview" class="tab-content active pt-6">
+                    <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+
+                        <!-- Main Stats Block -->
+                        <div class="lg:col-span-7 bg-slate-900/80 rounded-2xl p-6 border border-slate-800 flex flex-col justify-between">
+                            <div>
+                                <div class="flex justify-between items-start mb-4">
+                                    <div>
+                                        <p class="text-xs font-bold tracking-wider text-slate-400 uppercase">Total Portfolio Value</p>
+                                        <h3 class="text-3xl sm:text-4xl font-extrabold text-white mt-1">₹24,18,350</h3>
+                                    </div>
+                                    <div class="text-right">
+                                        <span class="inline-flex items-center gap-1 text-emerald-400 font-extrabold text-lg">
+                                            <i class="fa-solid fa-arrow-trend-up"></i> +18.3%
+                                        </span>
+                                        <p class="text-xs text-slate-400 font-medium">True XIRR</p>
+                                    </div>
+                                </div>
+
+                                <!-- Simulated Curve Chart -->
+                                <div class="w-full h-24 my-4 flex items-end">
+                                    <svg viewBox="0 0 500 100" class="w-full h-full text-cyan-400 overflow-visible">
+                                        <defs>
+                                            <linearGradient id="chartGradient" x1="0" y1="0" x2="0" y2="1">
+                                                <stop offset="0%" stop-color="#06b6d4" stop-opacity="0.4"/>
+                                                <stop offset="100%" stop-color="#06b6d4" stop-opacity="0.0"/>
+                                            </linearGradient>
+                                        </defs>
+                                        <path d="M 0,80 Q 100,20 200,60 T 400,20 T 500,10 L 500,100 L 0,100 Z" fill="url(#chartGradient)" />
+                                        <path d="M 0,80 Q 100,20 200,60 T 400,20 T 500,10" fill="none" stroke="#06b6d4" stroke-width="4" />
+                                    </svg>
+                                </div>
+                            </div>
+
+                            <!-- Allocation Bar -->
+                            <div class="space-y-2 mt-2">
+                                <div class="flex justify-between text-xs font-bold text-slate-300">
+                                    <span>Asset Allocation</span>
+                                    <span>68% Equity • 22% Debt • 10% Hybrid</span>
+                                </div>
+                                <div class="h-3 w-full bg-slate-800 rounded-full overflow-hidden flex">
+                                    <div class="h-full bg-cyan-400" style="width: 68%;"></div>
+                                    <div class="h-full bg-indigo-500" style="width: 22%;"></div>
+                                    <div class="h-full bg-teal-400" style="width: 10%;"></div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Side Metrics Column -->
+                        <div class="lg:col-span-5 space-y-4">
+                            <!-- Health Score Card -->
+                            <div class="bg-slate-900/80 rounded-2xl p-5 border border-slate-800 flex items-center justify-between">
+                                <div>
+                                    <p class="text-xs font-bold text-slate-400 uppercase">Portfolio Health Score</p>
+                                    <div class="flex items-baseline gap-2 mt-1">
+                                        <span class="text-2xl font-extrabold text-cyan-400">84</span>
+                                        <span class="text-xs text-slate-400">/ 100</span>
+                                    </div>
+                                    <p class="text-xs text-emerald-400 font-semibold mt-1"><i class="fa-solid fa-check me-1"></i> Grade A • Low Overlap</p>
+                                </div>
+                                <div class="w-14 h-14 rounded-full border-4 border-cyan-500/30 border-t-cyan-400 flex items-center justify-center font-bold text-cyan-400 text-sm">
+                                    84%
+                                </div>
+                            </div>
+
+                            <!-- 3Y Rolling Return -->
+                            <div class="bg-slate-900/80 rounded-2xl p-5 border border-slate-800">
+                                <div class="flex justify-between items-center mb-1">
+                                    <p class="text-xs font-bold text-slate-400 uppercase">3Y Rolling Return Benchmark</p>
+                                    <span class="text-xs font-semibold text-emerald-400">+3.6% Alpha</span>
+                                </div>
+                                <div class="flex items-baseline justify-between mt-2">
+                                    <span class="text-xl font-bold text-white">14.8% <small class="text-xs font-normal text-slate-400">Fundlense Avg</small></span>
+                                    <span class="text-sm font-semibold text-slate-400">11.2% <small class="text-xs font-normal text-slate-500">Nifty 50</small></span>
+                                </div>
+                            </div>
+
+                            <!-- Family Group Summary -->
+                            <div class="bg-slate-900/80 rounded-2xl p-5 border border-slate-800">
+                                <p class="text-xs font-bold text-slate-400 uppercase mb-2">Family Group Analytics</p>
+                                <div class="grid grid-cols-3 gap-2 text-center text-xs">
+                                    <div class="bg-slate-800/60 p-2 rounded-xl">
+                                        <span class="text-slate-400 block">Self</span>
+                                        <span class="font-bold text-white">₹14.2L</span>
+                                    </div>
+                                    <div class="bg-slate-800/60 p-2 rounded-xl">
+                                        <span class="text-slate-400 block">Spouse</span>
+                                        <span class="font-bold text-white">₹8.4L</span>
+                                    </div>
+                                    <div class="bg-slate-800/60 p-2 rounded-xl">
+                                        <span class="text-slate-400 block">Kids</span>
+                                        <span class="font-bold text-white">₹1.5L</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- TAB 2: RISK GAPS -->
+                <div id="tab-risk" class="tab-content pt-6">
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        <div class="bg-slate-900/80 rounded-2xl p-5 border border-slate-800">
+                            <div class="w-10 h-10 rounded-xl bg-amber-500/10 text-amber-400 flex items-center justify-center text-lg mb-3">
+                                <i class="fa-solid fa-triangle-exclamation"></i>
+                            </div>
+                            <h4 class="font-bold text-white text-base mb-1">Sector Concentration</h4>
+                            <p class="text-xs text-slate-300 mb-3">Your portfolio has a 42% exposure to Financial Services. Rebalancing recommended.</p>
+                            <span class="text-xs text-amber-400 font-semibold">High Risk Gap</span>
+                        </div>
+
+                        <div class="bg-slate-900/80 rounded-2xl p-5 border border-slate-800">
+                            <div class="w-10 h-10 rounded-xl bg-cyan-500/10 text-cyan-400 flex items-center justify-center text-lg mb-3">
+                                <i class="fa-solid fa-layer-group"></i>
+                            </div>
+                            <h4 class="font-bold text-white text-base mb-1">Stock Overlap</h4>
+                            <p class="text-xs text-slate-300 mb-3">3 Large Cap funds share 18 common underlying stocks including HDFC Bank and Reliance.</p>
+                            <span class="text-xs text-cyan-400 font-semibold">24% Overlap Detected</span>
+                        </div>
+
+                        <div class="bg-slate-900/80 rounded-2xl p-5 border border-slate-800">
+                            <div class="w-10 h-10 rounded-xl bg-indigo-500/10 text-indigo-400 flex items-center justify-center text-lg mb-3">
+                                <i class="fa-solid fa-gauge-high"></i>
+                            </div>
+                            <h4 class="font-bold text-white text-base mb-1">Volatility Score</h4>
+                            <p class="text-xs text-slate-300 mb-3">Current portfolio Beta is 1.12 vs Nifty 50. Displays higher sensitivity during pullbacks.</p>
+                            <span class="text-xs text-indigo-400 font-semibold">Moderate-High Volatility</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- TAB 3: GOAL PROJECTIONS -->
+                <div id="tab-goals" class="tab-content pt-6">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div class="bg-slate-900/80 rounded-2xl p-6 border border-slate-800 flex flex-col justify-between">
+                            <div>
+                                <span class="text-xs font-bold text-cyan-400 uppercase tracking-wider">Goal Tracker</span>
+                                <h4 class="text-xl font-bold text-white mt-1">Retirement Corpus (Target 2040)</h4>
+                                <p class="text-xs text-slate-300 mt-2">At current monthly SIP pace of ₹45,000 and 13.5% expected XIRR.</p>
+                            </div>
+                            <div class="mt-6">
+                                <div class="flex justify-between text-xs font-bold text-slate-300 mb-2">
+                                    <span>Target Progress</span>
+                                    <span>₹1.85 Cr / ₹5.00 Cr (37%)</span>
+                                </div>
+                                <div class="h-3 w-full bg-slate-800 rounded-full overflow-hidden">
+                                    <div class="h-full bg-gradient-to-r from-cyan-400 to-indigo-500" style="width: 37%;"></div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="bg-slate-900/80 rounded-2xl p-6 border border-slate-800 flex flex-col justify-between">
+                            <div>
+                                <span class="text-xs font-bold text-teal-400 uppercase tracking-wider">Goal Tracker</span>
+                                <h4 class="text-xl font-bold text-white mt-1">Child Higher Education (2032)</h4>
+                                <p class="text-xs text-slate-300 mt-2">On track with current hybrid fund SIP allocation.</p>
+                            </div>
+                            <div class="mt-6">
+                                <div class="flex justify-between text-xs font-bold text-slate-300 mb-2">
+                                    <span>Target Progress</span>
+                                    <span>₹48.2 L / ₹60.0 L (80%)</span>
+                                </div>
+                                <div class="h-3 w-full bg-slate-800 rounded-full overflow-hidden">
+                                    <div class="h-full bg-gradient-to-r from-teal-400 to-cyan-400" style="width: 80%;"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </section>
+
+        <section id="analytics" class="max-w-6xl mx-auto mb-28">
+            <div class="text-center max-w-3xl mx-auto mb-16">
+                <span class="px-4 py-1.5 rounded-full bg-cyan-500/10 border border-cyan-500/30 text-cyan-300 text-xs font-bold tracking-wider uppercase mb-3 inline-block">
+                    Deep Analytics Engine
+                </span>
+                <h2 class="text-3xl sm:text-5xl font-extrabold text-white tracking-tight mb-4">
+                    Everything in One Intelligent Dashboard
+                </h2>
+                <p class="text-slate-300 text-base sm:text-lg">
+                    Stop guessing your wealth growth. We process complex CAS statements to give you crisp, actionable portfolio diagnostics.
+                </p>
+            </div>
+
+            <!-- Bento Box Asymmetric Grid -->
+            <div class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-6">
+
+                <!-- Bento 1: Featured Large Box (Instant CAS Parsing) -->
+                <div class="md:col-span-2 lg:col-span-2 glass-panel-interactive rounded-3xl p-8 flex flex-col justify-between border-cyan-500/30 bg-gradient-to-br from-slate-900/90 to-cyan-950/20">
+                    <div>
+                        <div class="w-12 h-12 rounded-2xl bg-cyan-500/20 text-cyan-400 flex items-center justify-center text-2xl mb-6 shadow-glow-cyan">
+                            <i class="fa-solid fa-file-pdf"></i>
+                        </div>
+                        <h3 class="text-2xl font-bold text-white mb-3">Instant CAS Statement Parsing</h3>
+                        <p class="text-slate-300 text-sm leading-relaxed mb-6">
+                            Zero manual data entry required. Simply upload your official CAMS or KFintech Consolidated Account Statement (CAS) PDF. Our intelligent parser ingests decades of historical transactions across 40+ Indian AMCs in under 5 seconds.
+                        </p>
+                    </div>
+                    <div class="flex items-center gap-3 text-xs font-bold text-cyan-300">
+                        <span class="px-3 py-1 rounded-lg bg-slate-800 border border-slate-700">Multi-AMC Support</span>
+                        <span class="px-3 py-1 rounded-lg bg-slate-800 border border-slate-700">Auto Folio Mapping</span>
+                    </div>
+                </div>
+
+                <!-- Bento 2: True XIRR -->
+                <div class="md:col-span-1 lg:col-span-2 glass-panel-interactive rounded-3xl p-8 flex flex-col justify-between">
+                    <div>
+                        <div class="w-12 h-12 rounded-2xl bg-indigo-500/20 text-indigo-400 flex items-center justify-center text-2xl mb-6 shadow-glow-indigo">
+                            <i class="fa-solid fa-chart-line"></i>
+                        </div>
+                        <h3 class="text-xl font-bold text-white mb-3">True XIRR Return Analytics</h3>
+                        <p class="text-slate-300 text-sm leading-relaxed mb-4">
+                            Uncover your actual internal rate of return across complex cash flows, multiple SIP dates, dividends, and partial redemptions. Compare your true XIRR against Nifty 50 and Gold benchmarks.
+                        </p>
+                    </div>
+                    <span class="text-xs text-indigo-400 font-extrabold flex items-center gap-2">
+                        <span>Real cash-flow accurate calculation</span> <i class="fa-solid fa-arrow-right"></i>
+                    </span>
+                </div>
+
+                <!-- Bento 3: AI Insights -->
+                <div class="glass-panel-interactive rounded-3xl p-6">
+                    <div class="w-10 h-10 rounded-xl bg-teal-500/20 text-teal-400 flex items-center justify-center text-xl mb-4">
+                        <i class="fa-solid fa-brain"></i>
+                    </div>
+                    <h4 class="text-lg font-bold text-white mb-2">AI-Powered Insights</h4>
+                    <p class="text-slate-300 text-xs leading-relaxed">
+                        Automated pattern recognition detects high expense ratios, underperforming funds, and rebalancing alerts.
+                    </p>
+                </div>
+
+                <!-- Bento 4: Health Score -->
+                <div class="glass-panel-interactive rounded-3xl p-6">
+                    <div class="w-10 h-10 rounded-xl bg-cyan-500/20 text-cyan-400 flex items-center justify-center text-xl mb-4">
+                        <i class="fa-solid fa-shield-heart"></i>
+                    </div>
+                    <h4 class="text-lg font-bold text-white mb-2">Health Score</h4>
+                    <p class="text-slate-300 text-xs leading-relaxed">
+                        A single composite score evaluated across cost efficiency, fund consistency, and asset allocation balance.
+                    </p>
+                </div>
+
+                <!-- Bento 5: Portfolio Planning -->
+                <div class="glass-panel-interactive rounded-3xl p-6">
+                    <div class="w-10 h-10 rounded-xl bg-indigo-500/20 text-indigo-400 flex items-center justify-center text-xl mb-4">
+                        <i class="fa-solid fa-sliders"></i>
+                    </div>
+                    <h4 class="text-lg font-bold text-white mb-2">Portfolio Planning</h4>
+                    <p class="text-slate-300 text-xs leading-relaxed">
+                        Simulate the compounding impact of increasing your SIPs or deploying lumpsum amounts over long horizons.
+                    </p>
+                </div>
+
+                <!-- Bento 6: Risk Profile Analysis -->
+                <div class="glass-panel-interactive rounded-3xl p-6">
+                    <div class="w-10 h-10 rounded-xl bg-rose-500/20 text-rose-400 flex items-center justify-center text-xl mb-4">
+                        <i class="fa-solid fa-triangle-exclamation"></i>
+                    </div>
+                    <h4 class="text-lg font-bold text-white mb-2">Risk Profile Analysis</h4>
+                    <p class="text-slate-300 text-xs leading-relaxed">
+                        Reveal hidden volatility, market-cap imbalances, and sector concentration risks in your actual portfolio holdings.
+                    </p>
+                </div>
+
+                <!-- Bento 7: Diversification Analysis (Spans 2 columns) -->
+                <div class="md:col-span-2 glass-panel-interactive rounded-3xl p-6 flex flex-col justify-between">
+                    <div>
+                        <div class="w-10 h-10 rounded-xl bg-cyan-500/20 text-cyan-400 flex items-center justify-center text-xl mb-4">
+                            <i class="fa-solid fa-chart-pie"></i>
+                        </div>
+                        <h4 class="text-lg font-bold text-white mb-2">Diversification & Overlap Analysis</h4>
+                        <p class="text-slate-300 text-xs leading-relaxed">
+                            Holding 10 funds doesn't mean you're diversified if they all buy the exact same stocks. We scan underlying equity holdings to expose hidden overlap.
+                        </p>
+                    </div>
+                </div>
+
+                <!-- Bento 8: Family Group Analytics -->
+                <div class="glass-panel-interactive rounded-3xl p-6">
+                    <div class="w-10 h-10 rounded-xl bg-teal-500/20 text-teal-400 flex items-center justify-center text-xl mb-4">
+                        <i class="fa-solid fa-users"></i>
+                    </div>
+                    <h4 class="text-lg font-bold text-white mb-2">Family Grouping</h4>
+                    <p class="text-slate-300 text-xs leading-relaxed">
+                        Consolidate portfolio metrics for your spouse, children, and family members under one private dashboard.
+                    </p>
+                </div>
+
+                <!-- Bento 9: Goal Projections -->
+                <div class="glass-panel-interactive rounded-3xl p-6">
+                    <div class="w-10 h-10 rounded-xl bg-indigo-500/20 text-indigo-400 flex items-center justify-center text-xl mb-4">
+                        <i class="fa-solid fa-bullseye"></i>
+                    </div>
+                    <h4 class="text-lg font-bold text-white mb-2">Goal Projections</h4>
+                    <p class="text-slate-300 text-xs leading-relaxed">
+                        Map portfolio growth against real milestones like retirement, education, or house purchases with clear targets.
+                    </p>
+                </div>
+
+            </div>
+        </section>
+
+        <section id="how-it-works" class="max-w-6xl mx-auto mb-28">
+            <div class="text-center max-w-2xl mx-auto mb-16">
+                <span class="text-cyan-400 font-bold text-xs uppercase tracking-widest">Simple Workflow</span>
+                <h2 class="text-3xl sm:text-4xl font-extrabold text-white mt-2">Intelligence in 3 Simple Steps</h2>
+            </div>
+
+            <!-- Connected Timeline Grid -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-8 relative">
+
+                <!-- Connector Line for Desktop -->
+                <div class="hidden md:block absolute top-1/2 left-0 right-0 h-0.5 bg-gradient-to-r from-cyan-500 via-indigo-500 to-teal-500 -translate-y-8 z-0"></div>
+
+                <!-- Step 1 Card -->
+                <div class="glass-panel-interactive rounded-3xl p-8 relative z-10 flex flex-col items-center text-center">
+                    <div class="w-16 h-16 rounded-2xl bg-slate-900 border-2 border-cyan-400 text-cyan-400 flex items-center justify-center text-2xl font-black shadow-glow-cyan mb-6">
+                        01
+                    </div>
+                    <h3 class="text-xl font-bold text-white mb-3">Request Your CAS</h3>
+                    <p class="text-slate-300 text-sm leading-relaxed">
+                        Visit CAMS or KFintech online portal and request a free Consolidated Account Statement (CAS) sent to your registered email address.
+                    </p>
+                </div>
+
+                <!-- Step 2 Card -->
+                <div class="glass-panel-interactive rounded-3xl p-8 relative z-10 flex flex-col items-center text-center">
+                    <div class="w-16 h-16 rounded-2xl bg-slate-900 border-2 border-indigo-500 text-indigo-400 flex items-center justify-center text-2xl font-black shadow-glow-indigo mb-6">
+                        02
+                    </div>
+                    <h3 class="text-xl font-bold text-white mb-3">Upload Statement PDF</h3>
+                    <p class="text-slate-300 text-sm leading-relaxed">
+                        Drag and drop your CAS PDF onto Fundlense-AI. Enter your PDF password for automated, encrypted processing.
+                    </p>
+                </div>
+
+                <!-- Step 3 Card -->
+                <div class="glass-panel-interactive rounded-3xl p-8 relative z-10 flex flex-col items-center text-center">
+                    <div class="w-16 h-16 rounded-2xl bg-slate-900 border-2 border-teal-400 text-teal-400 flex items-center justify-center text-2xl font-black shadow-glow-teal mb-6">
+                        03
+                    </div>
+                    <h3 class="text-xl font-bold text-white mb-3">Get Deep Insights</h3>
+                    <p class="text-slate-300 text-sm leading-relaxed">
+                        Instantly access your true XIRR, diversification gaps, underlying stock overlap, and tailored optimization recommendations.
+                    </p>
+                </div>
+
+            </div>
+        </section>
+
+        <section id="security" class="max-w-6xl mx-auto mb-16">
+            <div class="glass-panel rounded-3xl p-8 sm:p-12 border-cyan-500/20 bg-gradient-to-b from-slate-900/80 to-slate-950/90">
+                <div class="text-center max-w-2xl mx-auto mb-12">
+                    <div class="w-12 h-12 rounded-2xl bg-cyan-500/20 text-cyan-400 flex items-center justify-center text-2xl mx-auto mb-4 shadow-glow-cyan">
+                        <i class="fa-solid fa-lock"></i>
+                    </div>
+                    <h2 class="text-3xl font-extrabold text-white mb-3">Your Privacy is Our Priority</h2>
+                    <p class="text-slate-300 text-sm leading-relaxed">
+                        We don't just secure your financial data; we make it inaccessible even to ourselves through strict zero-knowledge architecture.
+                    </p>
+                </div>
+
+                <!-- Privacy Cards 2x2 Grid -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div class="p-6 rounded-2xl bg-slate-900/90 border border-slate-800 flex items-start gap-4">
+                        <div class="w-10 h-10 rounded-xl bg-cyan-500/10 text-cyan-400 flex items-center justify-center text-lg shrink-0">
+                            <i class="fa-solid fa-key"></i>
+                        </div>
+                        <div>
+                            <h4 class="font-bold text-white text-base mb-1">Zero-Knowledge Passwords</h4>
+                            <p class="text-xs text-slate-300 leading-relaxed">Your CAS PDF password is used temporarily in memory for parsing and is never saved on any permanent storage server.</p>
+                        </div>
+                    </div>
+
+                    <div class="p-6 rounded-2xl bg-slate-900/90 border border-slate-800 flex items-start gap-4">
+                        <div class="w-10 h-10 rounded-xl bg-indigo-500/10 text-indigo-400 flex items-center justify-center text-lg shrink-0">
+                            <i class="fa-solid fa-shield-halved"></i>
+                        </div>
+                        <div>
+                            <h4 class="font-bold text-white text-base mb-1">Military-Grade Encryption</h4>
+                            <p class="text-xs text-slate-300 leading-relaxed">All parsed data attributes are encrypted at rest using AES-256 protocols and transmitted strictly over TLS 1.3 channels.</p>
+                        </div>
+                    </div>
+
+                    <div class="p-6 rounded-2xl bg-slate-900/90 border border-slate-800 flex items-start gap-4">
+                        <div class="w-10 h-10 rounded-xl bg-teal-500/10 text-teal-400 flex items-center justify-center text-lg shrink-0">
+                            <i class="fa-solid fa-user-gear"></i>
+                        </div>
+                        <div>
+                            <h4 class="font-bold text-white text-base mb-1">User-Triggered Processing</h4>
+                            <p class="text-xs text-slate-300 leading-relaxed">Data parsing is strictly executed upon your explicit request. No unauthorized background scraping occurs.</p>
+                        </div>
+                    </div>
+
+                    <div class="p-6 rounded-2xl bg-slate-900/90 border border-slate-800 flex items-start gap-4">
+                        <div class="w-10 h-10 rounded-xl bg-rose-500/10 text-rose-400 flex items-center justify-center text-lg shrink-0">
+                            <i class="fa-solid fa-trash-can"></i>
+                        </div>
+                        <div>
+                            <h4 class="font-bold text-white text-base mb-1">Complete Data Autonomy</h4>
+                            <p class="text-xs text-slate-300 leading-relaxed">You retain 100% ownership. Delete your uploaded portfolios and account metrics permanently with a single click.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <footer class="w-full border-t border-slate-800/80 bg-slate-950 px-4 sm:px-8 lg:px-16 py-8">
+        <div class="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4 text-xs text-slate-400">
+            <div class="flex items-center gap-2 font-bold text-white">
+                <i class="fa-solid fa-chart-pie text-cyan-400"></i>
+                <span>Fundlense-AI</span>
+            </div>
+            <p>© 2026 Fundlense-AI. Built for Indian Mutual Fund Investors.</p>
+            <div class="flex items-center gap-6">
+                <a href="#security" class="hover:text-cyan-400 transition-colors">Privacy Policy</a>
+                <a href="#how-it-works" class="hover:text-cyan-400 transition-colors">Terms of Service</a>
+                <a href="#" class="hover:text-cyan-400 transition-colors">Support</a>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Interactive JavaScript -->
+    <script>
+        /* Mobile Menu Drawer Toggle */
+        const mobileMenuBtn = document.getElementById('mobile-menu-btn');
+        const mobileMenu = document.getElementById('mobile-menu');
+
+        mobileMenuBtn.addEventListener('click', () => {
+            mobileMenu.classList.toggle('hidden');
+        });
+
+        /* Tab Switcher for Hero Interactive Mockup Terminal */
+        function switchTab(tabName) {
+            // Hide all tab contents
+            const contents = document.querySelectorAll('.tab-content');
+            contents.forEach(content => {
+                content.classList.remove('active');
+            });
+
+            // Deactivate all tab buttons
+            const buttons = document.querySelectorAll('.tab-btn');
+            buttons.forEach(btn => {
+                btn.classList.remove('text-white', 'bg-gradient-to-r', 'from-cyan-500', 'to-indigo-600', 'shadow-md');
+                btn.classList.add('hover:text-white', 'text-slate-400');
+            });
+
+            // Activate target tab content
+            const targetContent = document.getElementById(`tab-${tabName}`);
+            if (targetContent) {
+                targetContent.classList.add('active');
+            }
+
+            // Activate target tab button
+            const targetBtn = document.getElementById(`tab-btn-${tabName}`);
+            if (targetBtn) {
+                targetBtn.classList.remove('hover:text-white', 'text-slate-400');
+                targetBtn.classList.add('text-white', 'bg-gradient-to-r', 'from-cyan-500', 'to-indigo-600', 'shadow-md');
+            }
+        }
+    </script>
+{% include 'base/auth_modal.html' %}
+</body>
+</html>

@@ -24,6 +24,7 @@ from django.utils import timezone
 
 from cas_parser.services.dates import parse_date
 from cas_parser.services.hashing import compute_transaction_hash
+from cas_parser.services.ownership import check_statement_ownership
 from cas_parser.services.scheme_resolver import resolve_scheme
 
 logger = logging.getLogger(__name__)
@@ -104,6 +105,14 @@ def process_cas_statement(statement, password):
         return False, statement.processing_message, 500
 
     statement.raw_data = parsed
+
+    # ---- ownership check: reject someone else's statement, by PAN not email ----
+    allowed, ownership_message = check_statement_ownership(statement.user, parsed)
+    if not allowed:
+        statement.processing_status = statement.ProcessingStatus.FAILED
+        statement.processing_message = ownership_message
+        statement.save(update_fields=["raw_data", "processing_status", "processing_message"])
+        return False, ownership_message, 403
 
     folios = parsed.get("folios") or []
     # casparser flags this itself via "cas_type" - trust that first, and fall back to

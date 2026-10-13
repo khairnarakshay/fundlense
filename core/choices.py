@@ -34,3 +34,12 @@ RTA_AGENT_CHOICES = [
     ("KARVY", "Karvy"),
 
 ]
+
+OTP_TYPE_CHOICES = [
+    ("SIGNUP","SIGNUP"),
+    ("LOGIN","login"),
+    ("FORGOT_PASSWORD","forgot password"),
+    ("FORGOT_USERNAME","forgot username"),
+    ("RESET_PASSWORD","reset password"),
+    ("RESET_USERNAME","reset username"),
+]

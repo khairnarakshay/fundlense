@@ -13,6 +13,6 @@ urlpatterns = [
     path("transactions/", TransactionsAPIView.as_view(), name="portfolio-transactions"),
 
     path("statements/", CASStatementListAPIView.as_view(), name="cas-statement-list"),
-    path("statements/<int:statement_id>/", CASStatementDeleteAPIView.as_view(), name="cas-statement-delete"),
+    path("statements/delete/<int:statement_id>/", CASStatementDeleteAPIView.as_view(), name="cas-statement-delete"),
 ]
 

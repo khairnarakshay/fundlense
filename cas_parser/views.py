@@ -8,6 +8,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.views import APIView
 
 from cas_parser.models import CASStatement, CASTransaction
+from cas_parser.services.api_services.value_history import get_portfolio_history
 from cas_parser.services.hashing import compute_file_hash
 from cas_parser.services.ingest import process_cas_statement
 from core.pagination import paginate
@@ -392,3 +393,44 @@ def _serialize_statement(s):
         "txn_count": s.txn_count,
     }
 
+
+class PortfolioValueHistoryAPIView(APIView):
+    """
+    POST /api/portfolio/value-history/
+    body: {"period": "1Y", "scheme_ids": [12, 15]}
+      period: one of 1W, 1M, 3M, 6M, 1Y, 3Y, 5Y, All (case-insensitive)
+      scheme_ids: optional - our resolved MutualFundsScheme ids. Omit for all holdings;
+                  pass one or more to scope both graphs to just those schemes.
+
+    Returns both the VALUE graph (current worth over time, NAV-based) and the
+    INVESTED graph (cumulative amount put in, no NAV) in one response, since they
+    share the same underlying transaction fetch and plot dates - see
+    services/value_history.py for exactly how each is computed, and the
+    assumption about signed amount/units that's worth confirming.
+    """
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        period = (request.data.get("period") or "1Y").strip()
+        period_key = "All" if period.lower() == "all" else period.upper()
+        scheme_ids = request.data.get("scheme_ids") or None
+
+        try:
+            value_series, invested_series, excluded = get_portfolio_history(
+                request.user, period_key, scheme_ids)
+        except ValueError as exc:  # unknown period code
+            return api_response(400, str(exc))
+        except Exception:  # noqa: BLE001
+            logger.exception("value history failed for user_id=%s", request.user.id)
+            return api_response(500, "Something went wrong while building the portfolio value graph")
+
+        data = {
+            "period": period_key,
+            "value_series": value_series,
+            "invested_series": invested_series,
+            # funds in scope with no resolved scheme match - present in invested_series
+            # (no NAV needed) but missing from value_series (can't be priced). Empty
+            # list means every selected fund was fully priced.
+            "excluded_from_value_graph": excluded,
+        }
+        return api_response(200, "Data fetched successfully", data=data)

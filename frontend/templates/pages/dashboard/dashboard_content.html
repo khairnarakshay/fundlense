@@ -1,0 +1,330 @@
+<!-- Chart.js CDN for interactive time-series rendering -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<div class="container-fluid px-0">
+    <!-- Header Section -->
+    <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center mb-4 gap-3">
+        <div>
+            <div class="d-flex align-items-center gap-2">
+                <span class="badge bg-info bg-opacity-10 text-info border border-info border-opacity-25 px-2.5 py-1 rounded-pill small fw-bold">• PORTFOLIO ANALYTICS</span>
+                <small class="text-success fw-bold" id="apiStatusBadge"><i class="bi bi-check-circle-fill me-1"></i> Live Data Sync</small>
+            </div>
+            <h2 class="fw-extrabold text-light m-0 mt-1">Your portfolio, intelligently simplified.</h2>
+        </div>
+        <div class="d-flex align-items-center gap-2">
+            <button class="btn btn-sm btn-outline-info rounded-pill px-3 py-2 fw-bold" onclick="refreshDashboard()"><i class="bi bi-arrow-clockwise me-1"></i> Sync Data</button>
+            <a href="/statements/" class="btn btn-sm btn-info text-dark rounded-pill px-3 py-2 fw-bold"><i class="bi bi-file-earmark-plus me-1"></i> Upload Statement</a>
+        </div>
+    </div>
+
+    <!-- TOP KPI METRICS ROW -->
+    <div class="row g-3 mb-4">
+        <div class="col-6 col-md-3">
+            <div class="card bg-dark bg-opacity-50 border border-secondary border-opacity-25 p-3 rounded-3 h-100">
+                <span class="text-light text-opacity-75 small fw-bold text-uppercase">TOTAL INVESTED</span>
+                <h3 class="fw-extrabold text-light mt-1 mb-0" id="kpiInvested">₹0.00</h3>
+                <small class="text-light text-opacity-50">Cost basis</small>
+            </div>
+        </div>
+        <div class="col-6 col-md-3">
+            <div class="card bg-dark bg-opacity-50 border border-secondary border-opacity-25 p-3 rounded-3 h-100">
+                <span class="text-light text-opacity-75 small fw-bold text-uppercase">PORTFOLIO VALUE</span>
+                <h3 class="fw-extrabold text-info mt-1 mb-0" id="kpiValue">₹0.00</h3>
+                <small class="text-light text-opacity-50">Current market value</small>
+            </div>
+        </div>
+        <div class="col-6 col-md-3">
+            <div class="card bg-dark bg-opacity-50 border border-secondary border-opacity-25 p-3 rounded-3 h-100">
+                <span class="text-light text-opacity-75 small fw-bold text-uppercase">TOTAL GAIN (P&L)</span>
+                <h3 class="fw-extrabold text-success mt-1 mb-0" id="kpiGain">₹0.00</h3>
+                <small class="text-success fw-bold" id="kpiGainPercent">+0.00% profit</small>
+            </div>
+        </div>
+        <div class="col-6 col-md-3">
+            <div class="card bg-dark bg-opacity-50 border border-secondary border-opacity-25 p-3 rounded-3 h-100">
+                <span class="text-light text-opacity-75 small fw-bold text-uppercase">ACTIVE HOLDINGS</span>
+                <h3 class="fw-extrabold text-light mt-1 mb-0" id="kpiHoldings">0 Funds</h3>
+                <small class="text-info fw-bold" id="kpiSipText">-- active SIPs</small>
+            </div>
+        </div>
+    </div>
+
+    <!-- CHART & ALLOCATION SECTION -->
+    <div class="row g-4 mb-4">
+        <!-- Main Performance Chart -->
+        <div class="col-lg-8">
+            <div class="card bg-dark bg-opacity-50 border border-secondary border-opacity-25 p-4 rounded-4 h-100">
+                <div class="d-flex flex-column flex-sm-row justify-content-between align-items-sm-center mb-3 gap-2">
+                    <div>
+                        <h5 class="fw-bold text-light m-0">Portfolio Performance Over Time</h5>
+                        <p class="text-light text-opacity-50 small m-0">Comparing Current Valuation against Total Principal Invested</p>
+                    </div>
+                    <!-- Time Filters -->
+                    <div class="btn-group btn-group-sm" role="group" id="periodFilterGroup">
+                        <button type="button" class="btn btn-outline-info active" onclick="loadChartData('1W', this)">1W</button>
+                        <button type="button" class="btn btn-outline-info" onclick="loadChartData('1M', this)">1M</button>
+                        <button type="button" class="btn btn-outline-info" onclick="loadChartData('3M', this)">3M</button>
+                        <button type="button" class="btn btn-outline-info" onclick="loadChartData('6M', this)">6M</button>
+                        <button type="button" class="btn btn-outline-info" onclick="loadChartData('1Y', this)">1Y</button>
+                        <button type="button" class="btn btn-outline-info" onclick="loadChartData('3Y', this)">3Y</button>
+                        <button type="button" class="btn btn-outline-info" onclick="loadChartData('5Y', this)">5Y</button>
+                        <button type="button" class="btn btn-outline-info" onclick="loadChartData('All', this)">All</button>
+                    </div>
+                </div>
+
+                <div class="position-relative" style="min-height: 280px; max-height: 320px;">
+                    <canvas id="portfolioChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- Right Side Allocation Breakdown -->
+        <div class="col-lg-4">
+            <div class="card bg-dark bg-opacity-50 border border-secondary border-opacity-25 p-4 rounded-4 h-100 d-flex flex-col justify-content-between">
+                <div>
+                    <h5 class="fw-bold text-light mb-3">AMC Allocation Breakdown</h5>
+                    <div id="amcAllocationList" class="space-y-3 mb-4">
+                        <p class="text-light text-opacity-50 small">Loading AMC metrics...</p>
+                    </div>
+                </div>
+
+                <div class="pt-3 border-top border-secondary border-opacity-25">
+                    <h6 class="fw-bold text-light mb-2">Category Exposure</h6>
+                    <div id="categoryBadgeList" class="d-flex flex-wrap gap-2"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- CATEGORY BREAKDOWN TABLE SECTION -->
+    <div class="card bg-dark bg-opacity-50 border border-secondary border-opacity-25 p-4 rounded-4 shadow-lg mb-4">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <div>
+                <h5 class="fw-bold text-light m-0">Category Breakdown & Returns</h5>
+                <p class="text-light text-opacity-50 small m-0">Detailed breakdown of mutual fund categories and allocation percentages</p>
+            </div>
+        </div>
+
+        <div class="table-responsive">
+            <table class="table table-dark table-hover align-middle mb-0">
+                <thead>
+                    <tr class="text-light text-opacity-75 small border-bottom border-secondary border-opacity-25">
+                        <th class="py-3">CATEGORY</th>
+                        <th class="py-3">FUND COUNT</th>
+                        <th class="py-3">ALLOCATION (%)</th>
+                        <th class="py-3">3Y CAGR</th>
+                        <th class="py-3 text-end">XIRR</th>
+                    </tr>
+                </thead>
+                <tbody id="categoryTableBody">
+                    <tr>
+                        <td colspan="5" class="text-center text-light text-opacity-50 py-4">Loading category breakdown...</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Dashboard Controller Script with Encrypted Token Auth Headers -->
+<script>
+    let myChartInstance = null;
+
+    document.addEventListener("DOMContentLoaded", function () {
+        // Run global auth guard check if available
+        if (typeof checkAuthOrRedirect === 'function') {
+            checkAuthOrRedirect();
+        }
+        refreshDashboard();
+    });
+
+    function refreshDashboard() {
+        fetchSummaryData();
+        fetchAllocationData();
+        fetchCategoryData();
+        loadChartData('1W', document.querySelector('#periodFilterGroup .active'));
+    }
+
+    // Helper to generate auth headers with decrypted token
+   // Helper to generate correct Bearer token auth headers
+    function getAuthHeaders() {
+        const token = typeof SecureStorage !== 'undefined' ? SecureStorage.getItem('access_token') : null;
+        const headers = {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCookie('csrftoken')
+        };
+        if (token) {
+            headers['Authorization'] = `Bearer ${token}`;
+        }
+        return headers;
+    }
+        if (token) {
+            headers['Authorization'] = `Bearer ${token}`;
+        }
+        return headers;
+    }
+
+    // 1. SUMMARY API (/cas_parser/v1/summary/)
+    async function fetchSummaryData() {
+        try {
+            const res = await fetch('/cas_parser/v1/summary/', {
+                method: 'GET',
+                headers: getAuthHeaders()
+            });
+            const result = await res.json();
+            if (result.st === 200 && result.data) {
+                const d = result.data;
+                document.getElementById('kpiInvested').textContent = `₹${d.invested.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`;
+                document.getElementById('kpiValue').textContent = `₹${d.portfolio_value.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`;
+                document.getElementById('kpiGain').textContent = `${d.total_gain >= 0 ? '+' : ''}₹${d.total_gain.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`;
+
+                const gainPctEl = document.getElementById('kpiGainPercent');
+                gainPctEl.textContent = `${d.total_gain_percent >= 0 ? '+' : ''}${d.total_gain_percent.toFixed(2)}% profit`;
+                gainPctEl.className = d.total_gain_percent >= 0 ? 'text-success fw-bold' : 'text-danger fw-bold';
+
+                document.getElementById('kpiHoldings').textContent = `${d.holdings_count} Funds`;
+                document.getElementById('kpiSipText').textContent = d.monthly_sip_total ? `₹${d.monthly_sip_total} / mo` : 'Active portfolio';
+            }
+        } catch (err) { console.error("Error fetching summary:", err); }
+    }
+
+    // 2. ALLOCATION API (/cas_parser/v1/allocation/)
+    async function fetchAllocationData() {
+        try {
+            const res = await fetch('/cas_parser/v1/allocation/', {
+                method: 'GET',
+                headers: getAuthHeaders()
+            });
+            const result = await res.json();
+            if (result.st === 200 && result.data && result.data.by_amc) {
+                const listEl = document.getElementById('amcAllocationList');
+                listEl.innerHTML = '';
+                result.data.by_amc.forEach(amc => {
+                    listEl.innerHTML += `
+                        <div class="mb-2">
+                            <div class="d-flex justify-content-between text-light small fw-bold mb-1">
+                                <span>${amc.label}</span>
+                                <span>${amc.percent.toFixed(1)}%</span>
+                            </div>
+                            <div class="progress bg-black bg-opacity-50" style="height: 6px;">
+                                <div class="progress-bar bg-info" role="progressbar" style="width: ${amc.percent}%;"></div>
+                            </div>
+                        </div>
+                    `;
+                });
+            }
+        } catch (err) { console.error("Error fetching allocation:", err); }
+    }
+
+    // 3. CATEGORY RETURNS API (/cas_parser/v1/returns-by-category/)
+    async function fetchCategoryData() {
+        try {
+            const res = await fetch('/cas_parser/v1/returns-by-category/', {
+                method: 'GET',
+                headers: getAuthHeaders()
+            });
+            const result = await res.json();
+            if (result.st === 200 && Array.isArray(result.data)) {
+                const tbody = document.getElementById('categoryTableBody');
+                const badgeList = document.getElementById('categoryBadgeList');
+                tbody.innerHTML = '';
+                badgeList.innerHTML = '';
+
+                result.data.forEach(cat => {
+                    tbody.innerHTML += `
+                        <tr>
+                            <td class="fw-bold text-light">${cat.category}</td>
+                            <td class="text-light text-opacity-75">${cat.fund_count} funds</td>
+                            <td class="fw-bold text-info">${cat.allocation_percent.toFixed(1)}%</td>
+                            <td class="text-light text-opacity-75">${cat.cagr_3y ? cat.cagr_3y + '%' : '--'}</td>
+                            <td class="text-end fw-bold text-light">${cat.xirr ? cat.xirr + '%' : '--'}</td>
+                        </tr>
+                    `;
+
+                    badgeList.innerHTML += `<span class="badge bg-black bg-opacity-50 text-info border border-info border-opacity-25 px-2.5 py-1.5">${cat.category}: ${cat.allocation_percent.toFixed(1)}%</span>`;
+                });
+            }
+        } catch (err) { console.error("Error fetching category returns:", err); }
+    }
+
+    // 4. CHART TIME-SERIES API (/cas_parser/v1/value-history/?period=1W)
+    async function loadChartData(period, btnElement) {
+        if (btnElement) {
+            document.querySelectorAll('#periodFilterGroup button').forEach(b => b.classList.remove('active'));
+            btnElement.classList.add('active');
+        }
+
+        try {
+            const res = await fetch(`/cas_parser/v1/value-history/?period=${period}`, {
+                method: 'GET',
+                headers: getAuthHeaders()
+            });
+            const result = await res.json();
+            if (result.st === 200 && result.data) {
+                const dates = result.data.invested_series.map(item => item.date);
+                const investedValues = result.data.invested_series.map(item => item.invested);
+                const portfolioValues = result.data.value_series.map(item => item.value);
+
+                renderChart(dates, investedValues, portfolioValues);
+            }
+        } catch (err) { console.error("Error fetching chart history:", err); }
+    }
+
+    function renderChart(labels, investedData, valueData) {
+        const ctx = document.getElementById('portfolioChart').getContext('2d');
+        if (myChartInstance) myChartInstance.destroy();
+
+        myChartInstance = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: labels,
+                datasets: [
+                    {
+                        label: 'Current Value (₹)',
+                        data: valueData,
+                        borderColor: '#06b6d4',
+                        backgroundColor: 'rgba(6, 182, 212, 0.15)',
+                        fill: true,
+                        tension: 0.3,
+                        borderWidth: 2
+                    },
+                    {
+                        label: 'Total Invested (₹)',
+                        data: investedData,
+                        borderColor: '#6366f1',
+                        borderDash: [5, 5],
+                        fill: false,
+                        tension: 0.3,
+                        borderWidth: 2
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { labels: { color: '#cbd5e1', font: { family: 'Plus Jakarta Sans' } } }
+                },
+                scales: {
+                    x: { ticks: { color: '#94a3b8' }, grid: { color: 'rgba(255,255,255,0.05)' } },
+                    y: { ticks: { color: '#94a3b8' }, grid: { color: 'rgba(255,255,255,0.05)' } }
+                }
+            }
+        });
+    }
+
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
+</script>

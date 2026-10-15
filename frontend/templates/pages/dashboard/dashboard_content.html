@@ -13,7 +13,7 @@
         </div>
         <div class="d-flex align-items-center gap-2">
             <button class="btn btn-sm btn-outline-info rounded-pill px-3 py-2 fw-bold" onclick="refreshDashboard()"><i class="bi bi-arrow-clockwise me-1"></i> Sync Data</button>
-            <a href="/statements/" class="btn btn-sm btn-info text-dark rounded-pill px-3 py-2 fw-bold"><i class="bi bi-file-earmark-plus me-1"></i> Upload Statement</a>
+            <a href="/statements" class="btn btn-sm btn-info text-dark rounded-pill px-3 py-2 fw-bold"><i class="bi bi-file-earmark-plus me-1"></i> Upload Statement</a>
         </div>
     </div>
 
@@ -167,10 +167,8 @@
     // 1. SUMMARY API (/cas_parser/v1/summary/)
     async function fetchSummaryData() {
         try {
-            const res = await fetch('/cas_parser/v1/summary/', {
-                method: 'GET',
-                headers: getAuthHeaders()
-            });
+            const res = await secureFetch('/cas_parser/v1/summary/', 'GET');
+
             const result = await res.json();
             if (result.st === 200 && result.data) {
                 const d = result.data;

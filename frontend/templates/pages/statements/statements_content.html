@@ -1,0 +1,349 @@
+<div class="container-fluid px-0">
+    <!-- Header Section -->
+    <div class="mb-4">
+        <span class="text-info fw-bold small text-uppercase tracking-wider">PORTFOLIO INTELLIGENCE</span>
+        <h2 class="fw-extrabold text-light m-0">Statement Center & Secure Ingestion</h2>
+        <p class="text-light text-opacity-75 small mt-1">Download, upload, and audit your Consolidated Account Statements securely.</p>
+    </div>
+
+    <!-- UI Notification Message Banner -->
+    <div id="uiToastAlert" class="alert d-none py-3 px-4 rounded-3 mb-4 shadow-lg border" role="alert"></div>
+
+    <!-- Tab Navigation Switcher -->
+    <ul class="nav nav-pills gap-3 mb-4 border-bottom border-secondary border-opacity-25 pb-3" id="statementTabs" role="tablist">
+        <li class="nav-item" role="presentation">
+            <button class="btn btn-info px-4 py-2.5 rounded-3 fw-bold text-dark active shadow-sm" id="get-stmt-tab" data-bs-toggle="pill" data-bs-target="#get-stmt-pane" type="button" role="tab">
+                <i class="bi bi-cloud-download me-2"></i> 1. Request CAS PDF
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="btn btn-dark text-light border border-secondary border-opacity-25 px-4 py-2.5 rounded-3 fw-bold" id="upload-stmt-tab" data-bs-toggle="pill" data-bs-target="#upload-stmt-pane" type="button" role="tab">
+                <i class="bi bi-shield-lock me-2"></i> 2. Secure Upload & Parser
+            </button>
+        </li>
+    </ul>
+
+    <!-- Tab Contents -->
+    <div class="tab-content" id="statementTabsContent">
+
+        <!-- TAB 1: GET STATEMENT GUIDE -->
+        <div class="tab-pane fade show active" id="get-stmt-pane" role="tabpanel">
+            <div class="card bg-dark bg-opacity-50 border-0 p-4 p-md-5 rounded-4 shadow-lg">
+                <div class="row g-5 align-items-center">
+                    <div class="col-lg-7">
+                        <span class="badge bg-info bg-opacity-10 text-info px-3 py-2 mb-3 rounded-pill fw-bold">
+                            Official Registrar Protocol
+                        </span>
+                        <h3 class="fw-bold text-light mb-3">How to acquire your CAS from CAMS / KFintech</h3>
+                        <p class="text-light text-opacity-75 small leading-relaxed mb-4">
+                            Consolidated Account Statements encompass all your mutual fund folios across registrars. Follow these recommended parameters on the official registrar portal for automated parsing:
+                        </p>
+
+                        <!-- Sleek Modern 2x2 Grid -->
+                        <div class="row g-3 mb-4">
+                            <div class="col-sm-6">
+                                <div class="p-3 rounded-3 bg-black bg-opacity-40 border border-white border-opacity-10 h-100">
+                                    <div class="text-info small fw-bold mb-1"><i class="bi bi-file-earmark-text me-1"></i> Statement Format</div>
+                                    <div class="text-light fw-semibold small">Detailed (Full History)</div>
+                                </div>
+                            </div>
+                            <div class="col-sm-6">
+                                <div class="p-3 rounded-3 bg-black bg-opacity-40 border border-white border-opacity-10 h-100">
+                                    <div class="text-info small fw-bold mb-1"><i class="bi bi-calendar-range me-1"></i> Time Horizon</div>
+                                    <div class="text-light fw-semibold small">01-Jan-2001 to Today</div>
+                                </div>
+                            </div>
+                            <div class="col-sm-6">
+                                <div class="p-3 rounded-3 bg-black bg-opacity-40 border border-white border-opacity-10 h-100">
+                                    <div class="text-info small fw-bold mb-1"><i class="bi bi-pie-chart me-1"></i> Folio Scope</div>
+                                    <div class="text-light fw-semibold small">Without zero balance</div>
+                                </div>
+                            </div>
+                            <div class="col-sm-6">
+                                <div class="p-3 rounded-3 bg-black bg-opacity-40 border border-white border-opacity-10 h-100">
+                                    <div class="text-info small fw-bold mb-1"><i class="bi bi-key me-1"></i> Password Tip</div>
+                                    <div class="text-info font-monospace fw-bold small">Password01@</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Action Buttons -->
+                        <div class="d-flex flex-wrap gap-3 pt-2">
+                            <a href="https://www.camsonline.com/Investors/Statements/Consolidated-Account-Statement" target="_blank" class="btn btn-info px-4 py-3 rounded-3 fw-bold text-dark shadow-sm">
+                                <i class="bi bi-box-arrow-up-right me-2"></i> Open CAMS Portal (External)
+                            </a>
+                            <button class="btn btn-outline-info px-4 py-3 rounded-3 fw-bold" onclick="switchToUploadTab()">
+                                Already have PDF? Upload Now →
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="col-lg-5">
+                        <div class="p-4 rounded-4 bg-black bg-opacity-60 border border-white border-opacity-10 text-center shadow-lg">
+                            <div class="bg-info bg-opacity-10 text-info mx-auto d-flex align-items-center justify-content-center rounded-3 mb-3" style="width: 56px; height: 56px; font-size: 1.5rem;">
+                                <i class="bi bi-shield-check"></i>
+                            </div>
+                            <h5 class="fw-bold text-light mb-1">Encrypted PDF Protocol</h5>
+                            <p class="text-light text-opacity-75 small mb-4">Your statements contain sensitive financial data. Fundlense-AI utilizes client-side zero-knowledge password verification.</p>
+                            <div class="p-3 rounded-3 bg-dark text-start small border border-secondary border-opacity-25">
+                                <span class="text-info fw-bold d-block mb-1"><i class="bi bi-lock me-1"></i> Security Guarantee</span>
+                                <span class="text-light text-opacity-75" style="font-size: 0.78rem;">Passwords are processed purely in memory during parsing and are never persisted on permanent storage.</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- TAB 2: UPLOAD STATEMENT & MANAGED TABLE -->
+        <div class="tab-pane fade" id="upload-stmt-pane" role="tabpanel">
+            <div class="card bg-dark bg-opacity-50 border-0 p-4 p-md-5 rounded-4 mb-5 shadow-lg">
+                <div class="d-flex align-items-center gap-3 mb-4">
+                    <div class="bg-info bg-opacity-10 text-info rounded-3 d-flex align-items-center justify-content-center fw-bold" style="width: 48px; height: 48px;">
+                        <i class="bi bi-upload fs-5"></i>
+                    </div>
+                    <div>
+                        <h4 class="fw-bold text-light mb-1">Secure CAS Ingestion Terminal</h4>
+                        <p class="text-light text-opacity-75 small mb-0">Upload your downloaded CAMS/KFintech PDF statement and enter the document password.</p>
+                    </div>
+                </div>
+
+                <!-- Upload Form -->
+                <form id="uploadStatementForm" onsubmit="handleUploadStatement(event)">
+                    <div class="p-5 rounded-4 border border-info border-opacity-25 text-center bg-black bg-opacity-40 mb-4 position-relative" style="border-style: dashed !important;">
+                        <input type="file" id="pdfFile" accept=".pdf" class="position-absolute top-0 start-0 w-100 h-100 opacity-0 cursor-pointer" required onchange="updateFileName(this)">
+                        <div id="dropZonePrompt">
+                            <i class="bi bi-cloud-arrow-up text-info display-4 mb-3"></i>
+                            <h5 class="fw-bold text-light mb-1" id="fileNameDisplay">Drop your CAS PDF here, or <span class="text-info">browse files</span></h5>
+                            <p class="text-light text-opacity-75 small mb-0">CAMS Combined CAS • PDF format only • Max size 20 MB</p>
+                        </div>
+                    </div>
+
+                    <div class="row g-3 mb-4">
+                        <div class="col-md-6">
+                            <label class="form-label text-light text-opacity-75 small fw-bold">PDF Security Password</label>
+                            <!-- FIXED PASSWORD INPUT VISIBILITY -->
+                            <input type="password" id="pdfPassword" class="form-control bg-dark text-white border-secondary p-3 rounded-3 fw-medium" style="background-color: #0f172a !important; color: #ffffff !important;" placeholder="e.g. Password01@" required>
+                        </div>
+                    </div>
+
+                    <!-- Upload Button -->
+                    <button type="submit" class="btn btn-info px-5 py-3 rounded-3 text-dark fw-bold shadow-sm">
+                        <i class="bi bi-cpu me-2"></i> Parse & Index Statement
+                    </button>
+                </form>
+            </div>
+
+            <!-- Managed Statements Table -->
+            <div class="card bg-dark bg-opacity-50 border-0 p-4 rounded-4 shadow-lg">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h5 class="fw-bold text-light m-0">Uploaded Statements Repository</h5>
+                    <button class="btn btn-sm btn-outline-info" onclick="fetchStatementsList()"><i class="bi bi-arrow-clockwise me-1"></i> Refresh</button>
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-dark table-hover align-middle mb-0">
+                        <thead>
+                            <tr class="text-light text-opacity-75 small border-bottom border-secondary border-opacity-25">
+                                <th class="py-3">FILE IDENTIFIER</th>
+                                <th class="py-3">UPLOADED DATE</th>
+                                <th class="py-3">SOURCE</th>
+                                <th class="py-3">STATUS</th>
+                                <th class="py-3">TRANSACTIONS</th>
+                                <th class="py-3 text-end">ACTIONS</th>
+                            </tr>
+                        </thead>
+                        <tbody id="statementsTableBody">
+                            <tr>
+                                <td colspan="6" class="text-center text-light text-opacity-75 py-4">Loading repository records...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+<!-- FULL SCREEN LOADING SPINNER -->
+<div id="loadingOverlay" class="fixed-top w-100 h-100 d-none justify-content-center align-items-center bg-dark bg-opacity-85" style="z-index: 2000; backdrop-filter: blur(8px);">
+    <div class="text-center p-5 rounded-4 card bg-dark border border-info shadow-lg text-light" style="max-width: 400px;">
+        <div class="spinner-border text-info mb-3" style="width: 3.5rem; height: 3.5rem;" role="status"></div>
+        <h4 class="fw-bold mb-2">Analyzing Statement...</h4>
+        <p class="text-light text-opacity-75 small mb-0">Parsing folios, validating transaction schemas, and calculating true portfolio metrics.</p>
+    </div>
+</div>
+
+<!-- Page JavaScript Logic -->
+<script>
+    document.addEventListener("DOMContentLoaded", function () {
+        fetchStatementsList();
+
+        const tabButtons = document.querySelectorAll('#statementTabs button[data-bs-toggle="pill"]');
+        tabButtons.forEach(btn => {
+            btn.addEventListener('shown.bs.tab', function (event) {
+                tabButtons.forEach(b => {
+                    b.classList.remove('btn-info', 'text-dark', 'shadow-sm', 'active');
+                    b.classList.add('btn-dark', 'text-light', 'border', 'border-secondary', 'border-opacity-25');
+                });
+                event.target.classList.remove('btn-dark', 'text-light', 'border', 'border-secondary', 'border-opacity-25');
+                event.target.classList.add('btn-info', 'text-dark', 'shadow-sm', 'active');
+            });
+        });
+    });
+
+    function switchToUploadTab() {
+        const uploadTabBtn = document.getElementById('upload-stmt-tab');
+        const tab = new bootstrap.Tab(uploadTabBtn);
+        tab.show();
+    }
+
+    function updateFileName(input) {
+        if (input.files && input.files[0]) {
+            document.getElementById('fileNameDisplay').innerHTML = `<span class="text-success fw-bold"><i class="bi bi-file-earmark-check me-2"></i>${input.files[0].name}</span>`;
+        }
+    }
+
+    function showBannerToast(msg, isError = false) {
+        const toast = document.getElementById('uiToastAlert');
+        toast.textContent = msg;
+        toast.classList.remove('d-none', 'alert-danger', 'alert-success', 'border-danger', 'border-success', 'text-danger', 'text-success');
+        if (isError) {
+            toast.classList.add('alert-danger', 'border-danger', 'text-danger', 'bg-dark');
+        } else {
+            toast.classList.add('alert-success', 'border-success', 'text-success', 'bg-dark');
+        }
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    // 1. FETCH STATEMENTS LIST API (/cas_parser/v1/statements/ via POST)
+    async function fetchStatementsList() {
+        const tbody = document.getElementById('statementsTableBody');
+        try {
+            const res = await fetch('/cas_parser/v1/statements/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCookie('csrftoken')
+                }
+            });
+            const result = await res.json();
+
+            if (result.st === 200 && result.data.length > 0) {
+                tbody.innerHTML = '';
+                result.data.forEach(stmt => {
+                    const formattedDate = new Date(stmt.uploaded_at).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+
+                    // FIXED STATUS BADGE TEXT VISIBILITY
+                    const statusBadge = `<span class="badge bg-success bg-opacity-10 text-success border border-success border-opacity-25 px-2.5 py-1.5 font-monospace fw-bold">${stmt.status}</span>`;
+
+                    tbody.innerHTML += `
+                        <tr id="stmt-row-${stmt.id}">
+                            <td class="fw-semibold text-light text-truncate" style="max-width: 250px;" title="${stmt.file_name}">${stmt.file_name}</td>
+                            <td class="text-light text-opacity-75 small">${formattedDate}</td>
+                            <td><span class="badge bg-secondary text-light px-2 py-1">${stmt.source}</span></td>
+                            <td>${statusBadge}</td>
+                            <td class="fw-bold text-light">${stmt.txn_count}</td>
+                            <td class="text-end">
+                                <a href="/dashboard/" class="btn btn-sm btn-outline-info me-2"><i class="bi bi-speedometer2 me-1"></i> Dashboard</a>
+                                <button class="btn btn-sm btn-outline-danger" onclick="deleteStatement(${stmt.id})"><i class="bi bi-trash"></i></button>
+                            </td>
+                        </tr>
+                    `;
+                });
+            } else {
+                tbody.innerHTML = `<tr><td colspan="6" class="text-center text-light text-opacity-75 py-4">No statements found in your repository. Upload a CAS PDF to begin.</td></tr>`;
+            }
+        } catch (err) {
+            tbody.innerHTML = `<tr><td colspan="6" class="text-center text-danger py-4">Failed to fetch statements from server.</td></tr>`;
+        }
+    }
+
+    // 2. UPLOAD STATEMENT API (/cas_parser/v1/upload/)
+    async function handleUploadStatement(e) {
+        e.preventDefault();
+        const fileInput = document.getElementById('pdfFile');
+        const passwordInput = document.getElementById('pdfPassword');
+        const loader = document.getElementById('loadingOverlay');
+
+        if (!fileInput.files[0]) {
+            showBannerToast("Please select a PDF file.", true);
+            return;
+        }
+
+        const formData = new FormData();
+        formData.append('file', fileInput.files[0]);
+        formData.append('password', passwordInput.value);
+
+        loader.classList.remove('d-none');
+        loader.classList.add('d-flex');
+
+        try {
+            const res = await fetch('/cas_parser/v1/upload/', {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': getCookie('csrftoken')
+                },
+                body: formData
+            });
+            const result = await res.json();
+
+            loader.classList.remove('d-flex');
+            loader.classList.add('d-none');
+
+            if (result.st === 201 || result.st === 200) {
+                showBannerToast(result.msg, false);
+                document.getElementById('uploadStatementForm').reset();
+                document.getElementById('fileNameDisplay').innerHTML = `Drop your CAS PDF here, or <span class="text-info">browse files</span>`;
+                fetchStatementsList();
+            } else {
+                showBannerToast(result.msg || "Upload parsing failed.", true);
+            }
+        } catch (err) {
+            loader.classList.remove('d-flex');
+            loader.classList.add('d-none');
+            showBannerToast("Network error during upload.", true);
+        }
+    }
+
+    // 3. DELETE STATEMENT API (/cas_parser/v1/statements/delete/ID/)
+    async function deleteStatement(id) {
+        if (!confirm("Are you sure you want to delete this statement record?")) return;
+
+        try {
+            const res = await fetch(`/cas_parser/v1/statements/delete/${id}/`, {
+                method: 'DELETE',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCookie('csrftoken')
+                }
+            });
+            const result = await res.json();
+
+            if (result.st === 200) {
+                showBannerToast(result.msg, false);
+                const row = document.getElementById(`stmt-row-${id}`);
+                if (row) row.remove();
+            } else {
+                showBannerToast(result.msg || "Failed to delete statement record.", true);
+            }
+        } catch (err) {
+            showBannerToast("Network error during deletion.", true);
+        }
+    }
+
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
+</script>

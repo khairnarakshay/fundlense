@@ -1,4 +1,25 @@
-// Helper to read Django's CSRF token cookie
+
+/**
+ * Global Logout Handler: Cleans front-end state, notifies backend to drop cookies, and redirects.
+ */
+window.logoutUser = async function() {
+    try {
+        // 1. Tell the Django server to clear the HttpOnly cookies across the domain
+        await fetch('https://fundlense.com', {
+            method: 'POST',
+            headers: { 'X-CSRFToken': getCookie('XSRF-TOKEN') }
+        });
+    } catch (e) {
+        console.error("Logout request to backend failed", e);
+    } finally {
+        // 2. Wipe clean the local non-sensitive session states
+        sessionStorage.clear();
+
+        // 3. Redirect to the home landing page
+        window.location.href = "/";
+    }
+};
+
 function getCookie(name) {
     let cookieValue = null;
     if (document.cookie && document.cookie !== '') {
@@ -14,50 +35,16 @@ function getCookie(name) {
     return cookieValue;
 }
 
-// frontend/static/js/secure_storage.js
-const SECRET_KEY = "FundlenseAI_SecureKey_2026!";
-
-const SecureStorage = {
-    encrypt(text) {
-        try {
-            return btoa(encodeURIComponent(text + "___" + SECRET_KEY));
-        } catch (e) {
-            return text;
-        }
-    },
-    decrypt(encoded) {
-        try {
-            let raw = decodeURIComponent(atob(encoded));
-            if (raw.endsWith("___" + SECRET_KEY)) {
-                return raw.replace("___" + SECRET_KEY, "");
-            }
-            return null;
-        } catch (e) {
-            return null;
-        }
-    },
-    setItem(key, value) {
-        const encrypted = this.encrypt(value);
-        localStorage.setItem(key, encrypted);
-        document.cookie = `${key}=${encrypted}; path=/; max-age=86400; SameSite=Lax`;
-    },
-    getItem(key) {
-        const encrypted = localStorage.getItem(key);
-        if (!encrypted) return null;
-        return this.decrypt(encrypted);
-    },
-    removeItem(key) {
-        localStorage.removeItem(key);
-        document.cookie = `${key}=; path=/; max-age=0;`;
+// Page Load Authentication Guard
+document.addEventListener("DOMContentLoaded", function() {
+    // Skip auth guard check if we are on the public home/landing page
+    if (window.location.pathname === "/" || window.location.pathname === "/home/") {
+        return;
     }
-};
 
-// Global Auth Guard Function (Check before loading protected pages)
-function checkAuthOrRedirect() {
-    const token = SecureStorage.getItem("access_token");
-    if (!token) {
-        SecureStorage.removeItem("access_token");
-        SecureStorage.removeItem("refresh_token");
-        window.location.href = "/"; // Redirect to landing page / login
-    }
-}
+    // Initial check: Redirect if the login session marker is missing on protected pages
+    checkAuthOrRedirect();
+});
+
+
+

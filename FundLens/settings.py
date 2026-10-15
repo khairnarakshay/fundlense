@@ -23,7 +23,20 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = 'django-insecure-#hyp8fe^-(nrunm@iz0%o@$px7p74hx3%*%sr3)wu1$lg5_rmq'
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+# Detect if you are in development or production
+DEBUG = True  # Set to False in production
+
+if DEBUG:
+    # 💻 Local Machine Configuration
+    # Setting to None tells Django to lock the cookie strictly to the current host (like localhost)
+    AUTH_COOKIE_DOMAIN = None
+    SESSION_COOKIE_SECURE = False  # Allow standard HTTP locally
+    CSRF_COOKIE_SECURE = False
+else:
+    # 🚀 Live Production Configuration
+    AUTH_COOKIE_DOMAIN = ".fundlense.com"
+    SESSION_COOKIE_SECURE = True   # Force HTTPS in production
+    CSRF_COOKIE_SECURE = True
 
 ALLOWED_HOSTS = []
 
@@ -126,6 +139,7 @@ REST_FRAMEWORK = {
     ),
 
     'DEFAULT_AUTHENTICATION_CLASSES': (
+        'core.authenticate.CookieJWTAuthentication',
         'rest_framework_simplejwt.authentication.JWTAuthentication',
         'rest_framework.authentication.SessionAuthentication',
         'rest_framework.authentication.BasicAuthentication',

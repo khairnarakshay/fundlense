@@ -6,7 +6,7 @@ from rest_framework.views import APIView
 from rest_framework.response import Response  # Required for Response()
 from rest_framework import status  # Required for status HTTP codes
 from rest_framework_simplejwt.tokens import RefreshToken
-
+from django.conf import settings
 from accounts.models import OTP
 from accounts.serializers import *
 from accounts.services.otp_services import get_valid_otp, issue_email_otp, OTP_MAX_ATTEMPTS
@@ -88,30 +88,44 @@ class SignInAPIView(APIView):
 
 
         refresh = RefreshToken.for_user(user)
+        access_token = str(refresh.access_token)
+        refresh_token = str(refresh)
 
-        access_token = str(
-            refresh.access_token
+        user_data = UserSerializer(user).data
+
+        response = api_response(
+            status.HTTP_200_OK,
+            "Login successful.",
+            user_data
         )
 
-        refresh_token = str(
-            refresh
+        # Determine secure status based on settings profile
+        is_secure = not settings.DEBUG
+
+        # Inject the Access Token Cookie dynamically 🔑
+        response.set_cookie(
+            key='access_token',
+            value=access_token,
+            httponly=True,
+            secure=is_secure,
+            samesite='Lax',
+            domain=settings.AUTH_COOKIE_DOMAIN,  # 👈 Dynamic: None locally, .fundlense.com in production
+            path='/'
         )
 
-        user_data = UserSerializer(
-            user
-        ).data
-
-        user_data["access_token"] = access_token
-
-        user_data["refresh_token"] = refresh_token
-
-        return api_response(
-                status.HTTP_200_OK,
-                "Login successful.",
-                user_data
-
-
+        # Inject the Refresh Token Cookie dynamically
+        response.set_cookie(
+            key='refresh_token',
+            value=refresh_token,
+            httponly=True,
+            secure=is_secure,
+            samesite='Lax',
+            domain=settings.AUTH_COOKIE_DOMAIN,  # 👈 Dynamic
+            path='/api/token/refresh/'
         )
+
+        return response
+
 
 class SignupAPIView(APIView):
     """Create a user account and send an email verification OTP."""
@@ -425,13 +439,45 @@ class SetPasswordAPIView(APIView):
                 update_fields=["is_verified", "otp_limit", "updated"]
             )
 
-        refresh = RefreshToken.for_user(user)
-        user_data = UserSerializer(user).data
-        user_data["access_token"] = str(refresh.access_token)
-        user_data["refresh_token"] = str(refresh)
+        # refresh = RefreshToken.for_user(user)
+        # user_data = UserSerializer(user).data
+        # user_data["access_token"] = str(refresh.access_token)
+        # user_data["refresh_token"] = str(refresh)
 
-        return api_response(
+        # 1. Generate the JWT tokens upon successful reset
+        refresh = RefreshToken.for_user(user)
+        access_token = str(refresh.access_token)
+        refresh_token = str(refresh)
+
+        # 2. Serialize user data (Tokens omitted from body)
+        user_data = UserSerializer(user).data
+
+        # 3. Create response object using your custom format utility
+        response = api_response(
             status.HTTP_200_OK,
             "Password set successfully.",
             data=user_data,
         )
+
+        # 4. Inject the Access Token Cookie (Shared across subdomains)
+        response.set_cookie(
+            key='access_token',
+            value=access_token,
+            httponly=True,
+            secure=True,
+            samesite='Lax',
+            domain='.fundlense.com',  # Matches ://fundlense.com config
+            path='/'
+        )
+
+        # 5. Inject the Refresh Token Cookie
+        response.set_cookie(
+            key='refresh_token',
+            value=refresh_token,
+            httponly=True,
+            secure=True,
+            samesite='Lax',
+            domain='.fundlense.com',
+            path='/api/token/refresh/'
+        )
+        return response

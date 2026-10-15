@@ -194,9 +194,8 @@
             const data = await res.json();
             if (data.st === 200) {
                 showAlert(data.msg, false);
-                SecureStorage.setItem('access_token', data.data.access_token);
-                SecureStorage.setItem('refresh_token', data.data.refresh_token);
-                setTimeout(() => window.location.href = "/dashboard/", 800);
+
+                setTimeout(() => window.location.href = "/dashboard", 800);
             } else {
                 showAlert(data.msg || "Login failed.");
             }

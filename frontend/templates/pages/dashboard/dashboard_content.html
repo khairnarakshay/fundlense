@@ -167,9 +167,8 @@
     // 1. SUMMARY API (/cas_parser/v1/summary/)
     async function fetchSummaryData() {
         try {
-            const res = await secureFetch('/cas_parser/v1/summary/', 'GET');
+            const result = await secureFetch('/cas_parser/v1/summary/', 'GET');
 
-            const result = await res.json();
             if (result.st === 200 && result.data) {
                 const d = result.data;
                 document.getElementById('kpiInvested').textContent = `₹${d.invested.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`;

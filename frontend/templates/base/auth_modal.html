@@ -119,6 +119,7 @@
 
 <!-- Load your global encryption utility script -->
 <script src="{% static 'js/secure_storage.js' %}"></script>
+<script src="{% static 'js/secureFetch.js' %}"></script>
 <script>
     function openAuthModal(viewName = 'login') {
         document.getElementById('authModalOverlay').classList.remove('hidden');
@@ -182,25 +183,31 @@
         e.preventDefault();
         const username = document.getElementById('loginUsername').value.trim();
         const password = document.getElementById('loginPassword').value;
+
         try {
-           const res = await fetch('/accounts/v1/auth/login/', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRFToken': csrftoken
-                },
-                body: JSON.stringify({ username, password })
-            });
-            const data = await res.json();
-            if (data.st === 200) {
+            //  1. Use secureFetch to automatically handle cookies and JSON parsing
+            const data = await secureFetch('/accounts/v1/auth/login/', 'POST', { username, password });
+
+            //  2. Check the response status based on your API schema layout
+            if (data && data.st === 200) {
                 showAlert(data.msg, false);
 
+                //  3. CRITICAL: Set the frontend session guard marker before moving pages!
+                sessionStorage.setItem("is_logged_in", "true");
+                if (data.data && data.data.username) {
+                    sessionStorage.setItem("username", data.data.username);
+                }
+
+                // Route user safely to the dashboard
                 setTimeout(() => window.location.href = "/dashboard", 800);
             } else {
-                showAlert(data.msg || "Login failed.");
+                showAlert((data && data.msg) || "Login failed.");
             }
-        } catch (err) { showAlert("Network connection error."); }
+        } catch (err) {
+            showAlert("Network connection error.");
+        }
     }
+
 
     async function submitSignupStep1(e) {
         e.preventDefault();

@@ -12,7 +12,8 @@ urlpatterns = [
     path("insights/", InsightsAPIView.as_view(), name="portfolio-insights"),
     path("transactions/", TransactionsAPIView.as_view(), name="portfolio-transactions"),
 
-
+    path("portfolio/invested-value/", PortfolioInvestedValueAPIView.as_view(), name="portfolio-invested-value"),
+    path("portfolio/current-value/", PortfolioCurrentValueAPIView.as_view(), name="portfolio-current-value"),
     path("statements/", CASStatementListAPIView.as_view(), name="cas-statement-list"),
     path("statements/delete/<int:statement_id>/", CASStatementDeleteAPIView.as_view(), name="cas-statement-delete"),
     path("value-history/", PortfolioValueHistoryAPIView.as_view(), name="portfolio-value-history"),

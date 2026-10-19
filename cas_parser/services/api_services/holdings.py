@@ -72,3 +72,21 @@ def cost_basis(h):
     response notes)."""
     val = latest_valuation(h)
     return val.cost if val else None
+
+
+def live_market_value(h):
+    """Like market_value(), but re-resolves the scheme fresh via ISIN instead of
+    trusting h.scheme_id - the FK stored on this holding row at ingestion time,
+    which can be stale if this particular holding was first uploaded before its
+    scheme existed in mutual_fund master data (see value_history.py's FIX note for
+    the full explanation; same bug, same fix, applied here for the summary API's
+    "live" current value)."""
+    from cas_parser.services.scheme_resolver import resolve_scheme
+
+    units = units_held(h)
+    if units is None:
+        return None
+    scheme = resolve_scheme(h.isin, h.amfi_code)
+    if scheme and scheme.current_nav is not None:
+        return units * scheme.current_nav
+    return None

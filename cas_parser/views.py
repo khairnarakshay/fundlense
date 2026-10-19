@@ -6,15 +6,17 @@ from rest_framework.parsers import FormParser, MultiPartParser
 from django.db.models import Count, Sum
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.views import APIView
-
+from django.utils import timezone
 from cas_parser.models import CASStatement, CASTransaction
-from cas_parser.services.api_services.value_history import get_portfolio_history
+from cas_parser.services.api_services.value_history import get_portfolio_history, get_invested_series, _parse_period, \
+    get_value_series
+# from cas_parser.services.api_services.value_history import get_portfolio_history
 from cas_parser.services.hashing import compute_file_hash
 from cas_parser.services.ingest import process_cas_statement
 from core.pagination import paginate
 from core.response import api_response   # reuse the same {st, msg, data} envelope everywhere
 from cas_parser.services.api_services.allocation import by_amc, by_asset_type
-from cas_parser.services.api_services.holdings import cost_basis, get_current_holdings, market_value
+from cas_parser.services.api_services.holdings import cost_basis, get_current_holdings, market_value, live_market_value
 from cas_parser.services.api_services.insights import top_and_needs_attention
 from cas_parser.services.api_services.returns_by_category import returns_by_category
 
@@ -131,8 +133,10 @@ class PortfolioSummaryAPIView(APIView):
 
             for h in holdings:
                 value = float(market_value(h) or 0)
+                live_value = float(live_market_value(h) or 0)  # fresh ISIN-resolved, today's NAV
                 cost = float(cost_basis(h) or 0)
                 total_value += value
+                total_live_value += live_value
                 total_cost += cost
                 stat = getattr(h.scheme, "portfolio_stat", None) if h.scheme_id else None
                 if stat and stat.expense_ratio is not None:
@@ -141,18 +145,34 @@ class PortfolioSummaryAPIView(APIView):
 
             gain = total_value - total_cost
             gain_percent = (gain / total_cost * 100) if total_cost else None
+
+            current_gain = total_live_value - total_cost  # NEW - based on live value
+            current_gain_percent = (current_gain / total_cost * 100) if total_cost else None
+
             expense_ratio = (expense_weighted / expense_weight_base) if expense_weight_base else None
 
+            now = timezone.now()
             data = {
-                "portfolio_value": round(total_value, 2),
-                "invested": round(total_cost, 2),
-                "total_gain": round(gain, 2),
+                "portfolio_value": round(total_value, 2),  # kept - original meaning/calc
+                "total_gain": round(gain, 2),  # kept - original meaning/calc
                 "total_gain_percent": round(gain_percent, 2) if gain_percent is not None else None,
+                # NEW: current holdings' live value - units held x TODAY's NAV, scheme
+                # re-resolved fresh per ISIN rather than trusting each holding's stored
+                # scheme_id (see live_market_value in holdings.py for why that matters).
+                "current_portfolio_value": round(total_live_value, 2),
+                "current_total_gain": round(current_gain, 2),
+                "current_total_gain_percent": round(current_gain_percent,
+                                                    2) if current_gain_percent is not None else None,
+                "invested": round(total_cost, 2),
                 "holdings_count": len(holdings),
                 "expense_ratio": round(expense_ratio, 2) if expense_ratio is not None else None,
                 "real_xirr": None,
                 "monthly_sip_total": None,
                 "active_sip_funds": None,
+                # mutual funds publish one NAV per day (T-1, released the next morning),
+                # so "as of now" reflects the latest AVAILABLE NAV, not a live intraday price.
+                "as_of_date": now.date(),
+                "as_of_time": now,
             }
         except Exception:  # noqa: BLE001
             logger.exception("portfolio summary failed for user_id=%s", request.user.id)
@@ -413,11 +433,14 @@ class PortfolioValueHistoryAPIView(APIView):
     def post(self, request):
         period = (request.data.get("period") or "1Y").strip()
         period_key = "All" if period.lower() == "all" else period.upper()
-        scheme_ids = request.data.get("scheme_ids") or None
+        scheme_isin = request.data.get("scheme_isin") or None
 
         try:
             value_series, invested_series, excluded = get_portfolio_history(
-                request.user, period_key, scheme_ids)
+                request.user, period_key, scheme_isin)
+            print("value_series:", value_series)
+            print("invested_series:", invested_series)
+
         except ValueError as exc:  # unknown period code
             return api_response(400, str(exc))
         except Exception:  # noqa: BLE001
@@ -431,6 +454,70 @@ class PortfolioValueHistoryAPIView(APIView):
             # funds in scope with no resolved scheme match - present in invested_series
             # (no NAV needed) but missing from value_series (can't be priced). Empty
             # list means every selected fund was fully priced.
+            "excluded_from_value_graph": excluded,
+        }
+        return api_response(200, "Data fetched successfully", data=data)
+
+
+class PortfolioInvestedValueAPIView(APIView):
+    """
+    POST /api/portfolio/value-history/invested-value/
+    body: {"period": "1Y", "scheme_ids": [12, 15]}
+      same parameters as the current-value endpoint above.
+
+    INVESTED AMOUNT over time - the running sum of transaction amount, no NAV
+    involved, so unresolved holdings are included here even if they're missing
+    from the current-value graph.
+    """
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        period_key = _parse_period(request)
+        scheme_ids = request.data.get("scheme_ids") or None
+
+        try:
+            invested_series = get_invested_series(request.user, period_key, scheme_ids)
+        except ValueError as exc:
+            return api_response(400, str(exc))
+        except Exception:  # noqa: BLE001
+            logger.exception("invested value history failed for user_id=%s", request.user.id)
+            return api_response(500, "Something went wrong while building the invested value graph")
+
+        data = {"period": period_key, "invested_series": invested_series}
+        return api_response(200, "Data fetched successfully", data=data)
+
+
+class PortfolioCurrentValueAPIView(APIView):
+    """
+    POST /api/portfolio/value-history/current-value/
+    body: {"period": "1Y", "scheme_ids": [12, 15]}
+      period: one of 1W, 1M, 3M, 6M, 1Y, 3Y, 5Y, All (case-insensitive)
+      scheme_ids: optional - our resolved MutualFundsScheme ids. Omit for all holdings;
+                  pass one or more to scope the graph to just those schemes.
+
+    CURRENT VALUE over time - units held x NAV, both as of each response date. See
+    services/value_history.py for exactly how this is computed, the historical-NAV
+    lookback rule, and the ISIN re-resolution fix for the 0.0 bug.
+    """
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        period_key = _parse_period(request)
+        scheme_ids = request.data.get("scheme_ids") or None
+
+        try:
+            value_series, excluded = get_value_series(request.user, period_key, scheme_ids)
+        except ValueError as exc:  # unknown period code
+            return api_response(400, str(exc))
+        except Exception:  # noqa: BLE001
+            logger.exception("current value history failed for user_id=%s", request.user.id)
+            return api_response(500, "Something went wrong while building the current value graph")
+
+        data = {
+            "period": period_key,
+            "value_series": value_series,
+            # funds in scope whose ISIN doesn't resolve to a scheme - no NAV to price
+            # them with, so missing from value_series. Empty list = everything priced.
             "excluded_from_value_graph": excluded,
         }
         return api_response(200, "Data fetched successfully", data=data)

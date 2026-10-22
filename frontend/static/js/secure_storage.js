@@ -4,21 +4,20 @@
  */
 window.logoutUser = async function() {
     try {
-        // 1. Tell the Django server to clear the HttpOnly cookies across the domain
-        await fetch('https://fundlense.com', {
-            method: 'POST',
-            headers: { 'X-CSRFToken': getCookie('XSRF-TOKEN') }
-        });
+        // 1. Tell Django to delete the HttpOnly cookies across the shared domain network
+        // Note: secureFetch automatically appends the correct credentials and CSRF safety tokens!
+        await secureFetch('/accounts/v1/auth/logout/', 'POST');
     } catch (e) {
-        console.error("Logout request to backend failed", e);
+        console.error("Backend cookie cleanup failed:", e);
     } finally {
-        // 2. Wipe clean the local non-sensitive session states
+        // 2. Wipe clear any safe frontend UI state variables (like username)
         sessionStorage.clear();
 
-        // 3. Redirect to the home landing page
+        // 3. Send the guest back to the root landing screen
         window.location.href = "/";
     }
 };
+
 
 function getCookie(name) {
     let cookieValue = null;

@@ -199,7 +199,7 @@
             if (res.ok && data && data.st === 200) {
                 if (typeof showAlert === 'function') showAlert(data.msg || "Login successful!", 'success', 'authAlertBox');
                 sessionStorage.setItem("is_logged_in", "true");
-                setTimeout(() => window.location.href = "/dashboard/", 800);
+                setTimeout(() => window.location.href = "/dashboard", 800);
             } else {
                 if (typeof showAlert === 'function') showAlert((data && data.msg) || "Invalid credentials.", 'error', 'authAlertBox');
             }
@@ -376,7 +376,7 @@
                     SecureStorage.setItem('access_token', data.data.access_token);
                     SecureStorage.setItem('refresh_token', data.data.refresh_token);
                 }
-                setTimeout(() => window.location.href = "/dashboard/", 1000);
+                setTimeout(() => window.location.href = "/dashboard", 1000);
             } else {
                 if (typeof showAlert === 'function') showAlert(data.msg || "Failed to set password.", 'error', 'authAlertBox');
             }

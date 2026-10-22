@@ -1,3 +1,4 @@
+{% load static %}
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -15,11 +16,13 @@
     <!-- htmx for Seamless Django Swapping without Full Page Reloads -->
     <script src="https://unpkg.com/htmx.org@1.9.10"></script>
 
-    <!-- LOAD SECURE STORAGE & GLOBAL AUTH GUARDS HERE -->
-    <script src="{% load static %}{% static 'js/secure_storage.js' %}"></script>
-     <!-- LOAD SECURE STORAGE & GLOBAL AUTH GUARDS HERE -->
-    <script src="{% load static %}{% static 'js/secureFetch.js' %}"></script>
+    <script src="{% static 'js/auth_guard.js' %}"></script>
+    <script src="{% static 'js/secure_storage.js' %}"></script>
+    <script src="{% static 'js/secureFetch.js' %}"></script>
+    <script src="{% static 'js/alerts.js' %}"></script>
+    <script src="{% static 'js/loader.js' %}"></script>
 
+    {% block extra_head %}{% endblock %}
 
     <style>
         :root {

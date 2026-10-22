@@ -128,7 +128,7 @@ class PortfolioSummaryAPIView(APIView):
     def get(self, request):
         try:
             holdings = get_current_holdings(request.user)
-            total_value = total_cost = 0.0
+            total_value = total_cost = total_live_value = 0.0
             expense_weighted, expense_weight_base = 0.0, 0.0
 
             for h in holdings:

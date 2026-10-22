@@ -1,7 +1,7 @@
 from django.db import transaction
 from django.shortcuts import render
 from django.contrib.auth import authenticate, get_user_model  # Required for authenticate()
-from rest_framework.permissions import AllowAny
+from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.views import APIView
 from rest_framework.response import Response  # Required for Response()
 from rest_framework import status  # Required for status HTTP codes
@@ -42,8 +42,8 @@ class SignInAPIView(APIView):
 
             return Response(
                 {
-                    "status": 101,
-                    "message": "Validation failed.",
+                    "st": 101,
+                    "msg": "Validation failed.",
                     "errors": serializer.errors,
                     "data": []
                 },
@@ -67,8 +67,8 @@ class SignInAPIView(APIView):
 
             return Response(
                 {
-                    "status": 102,
-                    "message": "Invalid username or password.",
+                    "st": 102,
+                    "msg": "Invalid username or password.",
                     "data": []
                 },
                 status=status.HTTP_401_UNAUTHORIZED
@@ -78,8 +78,8 @@ class SignInAPIView(APIView):
 
             return Response(
                 {
-                    "status": 103,
-                    "message": "User account is inactive.",
+                    "st": 103,
+                    "msg": "User account is inactive.",
                     "data": []
                 },
                 status=status.HTTP_403_FORBIDDEN
@@ -126,6 +126,35 @@ class SignInAPIView(APIView):
 
         return response
 
+class SignOutAPIView(APIView):
+    # Ensure only logged-in users can call this, using your custom cookie auth pipeline
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        response = Response(
+            {
+                "st": 200,
+                "msg": "Logged out successfully.",
+                "data": []
+            },
+            status=status.HTTP_200_OK
+        )
+
+        # 🔑 WIPE THE ACCESS TOKEN COOKIE
+        response.delete_cookie(
+            key='access_token',
+            domain=settings.AUTH_COOKIE_DOMAIN, # Dynamic: None locally, .fundlense.com in prod
+            path='/'
+        )
+
+        # 🔑 WIPE THE REFRESH TOKEN COOKIE
+        response.delete_cookie(
+            key='refresh_token',
+            domain=settings.AUTH_COOKIE_DOMAIN,
+            path='/api/token/refresh/' # Must match the exact path set during login!
+        )
+
+        return response
 
 class SignupAPIView(APIView):
     """Create a user account and send an email verification OTP."""

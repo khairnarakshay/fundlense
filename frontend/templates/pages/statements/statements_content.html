@@ -216,11 +216,11 @@
         window.scrollTo({ top: 0, behavior: 'smooth' });
     }
 
-    // 1. FETCH STATEMENTS LIST API (/cas_parser/v1/statements/ via POST)
+    // 1. FETCH STATEMENTS LIST API (/cas_parser/v1/statements via POST)
     async function fetchStatementsList() {
         const tbody = document.getElementById('statementsTableBody');
         try {
-            const res = await fetch('/cas_parser/v1/statements/', {
+            const res = await fetch('/cas_parser/v1/statements', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -245,7 +245,7 @@
                             <td>${statusBadge}</td>
                             <td class="fw-bold text-light">${stmt.txn_count}</td>
                             <td class="text-end">
-                                <a href="/dashboard/" class="btn btn-sm btn-outline-info me-2"><i class="bi bi-speedometer2 me-1"></i> Dashboard</a>
+                                <a href="/dashboard" class="btn btn-sm btn-outline-info me-2"><i class="bi bi-speedometer2 me-1"></i> Dashboard</a>
                                 <button class="btn btn-sm btn-outline-danger" onclick="deleteStatement(${stmt.id})"><i class="bi bi-trash"></i></button>
                             </td>
                         </tr>
@@ -279,14 +279,7 @@
         loader.classList.add('d-flex');
 
         try {
-            const res = await fetch('/cas_parser/v1/upload/', {
-                method: 'POST',
-                headers: {
-                    'X-CSRFToken': getCookie('csrftoken')
-                },
-                body: formData
-            });
-            const result = await res.json();
+            const result = await secureFetch('/cas_parser/v1/upload/', 'POST')
 
             loader.classList.remove('d-flex');
             loader.classList.add('d-none');
@@ -311,13 +304,8 @@
         if (!confirm("Are you sure you want to delete this statement record?")) return;
 
         try {
-            const res = await fetch(`/cas_parser/v1/statements/delete/${id}/`, {
-                method: 'DELETE',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRFToken': getCookie('csrftoken')
-                }
-            });
+            const result = await secureFetch(`/cas_parser/v1/statements/delete/${id}/`, 'DELETE');
+
             const result = await res.json();
 
             if (result.st === 200) {

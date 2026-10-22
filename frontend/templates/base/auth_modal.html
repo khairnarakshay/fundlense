@@ -1,7 +1,7 @@
 <!-- Auth Modal Overlay -->
 {% load static %}
 <div id="authModalOverlay" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-md hidden">
-    <div class="glass-panel w-full max-w-md mx-4 rounded-3xl p-6 sm:p-8 border border-cyan-500/30 shadow-2xl relative">
+    <div class="glass-panel w-full max-w-md mx-4 rounded-3xl p-6 sm:p-8 border border-cyan-500/30 shadow-2xl relative bg-slate-900 text-slate-100">
 
         <!-- Close Button -->
         <button onclick="closeAuthModal()" class="absolute top-6 right-6 text-slate-400 hover:text-white text-lg">
@@ -22,16 +22,16 @@
             <form onsubmit="submitLogin(event)" class="space-y-4">
                 <div>
                     <label class="block text-xs font-bold text-slate-300 mb-1.5 uppercase">Username / Mobile</label>
-                    <input type="text" id="loginUsername" required placeholder="8830437088" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-cyan-400">
+                    <input type="text" id="loginUsername" required placeholder="8830437088" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-cyan-400">
                 </div>
                 <div>
                     <div class="flex justify-between items-center mb-1.5">
                         <label class="block text-xs font-bold text-slate-300 uppercase">Password</label>
                         <button type="button" onclick="switchModalView('forgot')" class="text-xs text-cyan-400 hover:underline">Forgot?</button>
                     </div>
-                    <input type="password" id="loginPassword" required placeholder="••••••••" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-cyan-400">
+                    <input type="password" id="loginPassword" required placeholder="••••••••" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-cyan-400">
                 </div>
-                <button type="submit" class="w-full py-3.5 rounded-xl bg-gradient-to-r from-cyan-500 to-indigo-600 hover:from-cyan-400 text-white font-extrabold text-sm shadow-glow-cyan transition-all mt-2">
+                <button type="submit" id="btnLoginSubmit" class="w-full py-3.5 rounded-xl bg-gradient-to-r from-cyan-500 to-indigo-600 hover:from-cyan-400 text-white font-extrabold text-sm shadow-lg transition-all mt-2">
                     Sign In
                 </button>
             </form>
@@ -45,13 +45,13 @@
             <form onsubmit="submitSignupStep1(event)" class="space-y-4">
                 <div>
                     <label class="block text-xs font-bold text-slate-300 mb-1.5 uppercase">Mobile Number</label>
-                    <input type="tel" id="signupMobile" required placeholder="8830437088" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-cyan-400">
+                    <input type="tel" id="signupMobile" required placeholder="8830437088" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-cyan-400">
                 </div>
                 <div>
                     <label class="block text-xs font-bold text-slate-300 mb-1.5 uppercase">Email Address</label>
-                    <input type="email" id="signupEmail" required placeholder="name@example.com" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-cyan-400">
+                    <input type="email" id="signupEmail" required placeholder="name@example.com" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-cyan-400">
                 </div>
-                <button type="submit" class="w-full py-3.5 rounded-xl bg-gradient-to-r from-cyan-500 to-indigo-600 hover:from-cyan-400 text-white font-extrabold text-sm shadow-glow-cyan transition-all mt-2">
+                <button type="submit" id="btnSignupSubmit" class="w-full py-3.5 rounded-xl bg-gradient-to-r from-cyan-500 to-indigo-600 hover:from-cyan-400 text-white font-extrabold text-sm shadow-lg transition-all mt-2">
                     Continue to OTP Verification
                 </button>
             </form>
@@ -65,13 +65,13 @@
             <form onsubmit="submitVerifyOtp(event)" class="space-y-4">
                 <div>
                     <label class="block text-xs font-bold text-slate-300 mb-1.5 uppercase text-center">Enter 6-Digit OTP</label>
-                    <input type="text" id="otpCode" required maxlength="6" placeholder="121653" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 text-center text-xl tracking-widest text-white focus:outline-none focus:border-cyan-400 font-mono">
+                    <input type="text" id="otpCode" required maxlength="6" placeholder="121653" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-4 py-3 text-center text-xl tracking-widest text-white focus:outline-none focus:border-cyan-400 font-mono">
                 </div>
                 <div class="flex justify-between items-center text-xs">
                     <span id="otpTimerDisplay" class="text-amber-400 font-medium">Resend in 60s</span>
                     <button type="button" id="resendOtpBtn" disabled onclick="triggerResendOtp()" class="text-cyan-400 font-bold hover:underline disabled:opacity-50 disabled:cursor-not-allowed">Resend OTP</button>
                 </div>
-                <button type="submit" class="w-full py-3.5 rounded-xl bg-gradient-to-r from-cyan-500 to-indigo-600 hover:from-cyan-400 text-white font-extrabold text-sm shadow-glow-cyan transition-all mt-2">
+                <button type="submit" id="btnVerifyOtpSubmit" class="w-full py-3.5 rounded-xl bg-gradient-to-r from-cyan-500 to-indigo-600 hover:from-cyan-400 text-white font-extrabold text-sm shadow-lg transition-all mt-2">
                     Verify OTP
                 </button>
             </form>
@@ -82,13 +82,13 @@
             <form onsubmit="submitSetPassword(event)" class="space-y-4">
                 <div>
                     <label class="block text-xs font-bold text-slate-300 mb-1.5 uppercase">New Password</label>
-                    <input type="password" id="newPassword" required placeholder="Password@123" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-cyan-400">
+                    <input type="password" id="newPassword" required placeholder="Password@123" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-cyan-400">
                 </div>
                 <div>
                     <label class="block text-xs font-bold text-slate-300 mb-1.5 uppercase">Confirm Password</label>
-                    <input type="password" id="confirmPassword" required placeholder="Password@123" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-cyan-400">
+                    <input type="password" id="confirmPassword" required placeholder="Password@123" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-cyan-400">
                 </div>
-                <button type="submit" class="w-full py-3.5 rounded-xl bg-gradient-to-r from-cyan-500 to-indigo-600 hover:from-cyan-400 text-white font-extrabold text-sm shadow-glow-cyan transition-all mt-2">
+                <button type="submit" id="btnSetPassSubmit" class="w-full py-3.5 rounded-xl bg-gradient-to-r from-cyan-500 to-indigo-600 hover:from-cyan-400 text-white font-extrabold text-sm shadow-lg transition-all mt-2">
                     Complete & Access Terminal
                 </button>
             </form>
@@ -99,13 +99,13 @@
             <form onsubmit="submitForgotStep1(event)" class="space-y-4">
                 <div>
                     <label class="block text-xs font-bold text-slate-300 mb-1.5 uppercase">Registered Mobile</label>
-                    <input type="tel" id="forgotMobile" required placeholder="8830437088" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-cyan-400">
+                    <input type="tel" id="forgotMobile" required placeholder="8830437088" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-cyan-400">
                 </div>
                 <div>
                     <label class="block text-xs font-bold text-slate-300 mb-1.5 uppercase">Registered Email</label>
-                    <input type="email" id="forgotEmail" required placeholder="name@example.com" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-cyan-400">
+                    <input type="email" id="forgotEmail" required placeholder="name@example.com" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-cyan-400">
                 </div>
-                <button type="submit" class="w-full py-3.5 rounded-xl bg-gradient-to-r from-cyan-500 to-indigo-600 hover:from-cyan-400 text-white font-extrabold text-sm shadow-glow-cyan transition-all mt-2">
+                <button type="submit" id="btnForgotSubmit" class="w-full py-3.5 rounded-xl bg-gradient-to-r from-cyan-500 to-indigo-600 hover:from-cyan-400 text-white font-extrabold text-sm shadow-lg transition-all mt-2">
                     Send Reset OTP
                 </button>
             </form>
@@ -117,22 +117,31 @@
     </div>
 </div>
 
-<!-- Load your global encryption utility script -->
+<!-- Required Utility Scripts -->
 <script src="{% static 'js/secure_storage.js' %}"></script>
 <script src="{% static 'js/secureFetch.js' %}"></script>
+<script src="{% static 'js/alerts.js' %}"></script>
+<script src="{% static 'js/loader.js' %}"></script>
+
 <script>
+    // --- GLOBAL SCOPE STATE VARIABLES ---
+    let userState = { mobile: '', email: '' };
+    let activeOtpType = 'SIGNUP';
+    let countdownTimerRef = null;
+    let tempVerifiedOtp = '';
+
     function openAuthModal(viewName = 'login') {
         document.getElementById('authModalOverlay').classList.remove('hidden');
         switchModalView(viewName);
     }
 
-
     function closeAuthModal() {
         document.getElementById('authModalOverlay').classList.add('hidden');
-        hideAlert();
+        if (typeof hideAlert === 'function') hideAlert('authAlertBox');
     }
+
     function switchModalView(viewName) {
-        hideAlert();
+        if (typeof hideAlert === 'function') hideAlert('authAlertBox');
         document.querySelectorAll('.auth-form-step').forEach(el => el.classList.add('hidden'));
         const title = document.getElementById('modalTitle');
         const subtitle = document.getElementById('modalSubtitle');
@@ -160,75 +169,81 @@
             subtitle.textContent = "Provide your registered contact info to receive reset OTP.";
         }
     }
-    function showAlert(message, isError = true) {
-        const box = document.getElementById('authAlertBox');
-        box.textContent = message;
-        box.classList.remove('hidden', 'bg-emerald-500/20', 'text-emerald-300', 'border', 'border-emerald-500/30', 'bg-rose-500/20', 'text-rose-300', 'border-rose-500/30');
-        if (isError) {
-            box.classList.add('bg-rose-500/20', 'text-rose-300', 'border', 'border-rose-500/30');
-        } else {
-            box.classList.add('bg-emerald-500/20', 'text-emerald-300', 'border', 'border-emerald-500/30');
-        }
-    }
-    function hideAlert() {
-        document.getElementById('authAlertBox').classList.add('hidden');
-    }
-    const csrftoken = getCookie('csrftoken');
 
-    let userState = { mobile: '', email: '' };
-    let activeOtpType = 'SIGNUP';
-    let countdownTimerRef = null;
+    // --- SUBMISSION HANDLERS ---
 
     async function submitLogin(e) {
         e.preventDefault();
         const username = document.getElementById('loginUsername').value.trim();
         const password = document.getElementById('loginPassword').value;
+        const submitBtn = document.getElementById('btnLoginSubmit');
+
+        if (typeof showLoader === 'function') showLoader('Signing into your terminal...');
+        if (typeof setButtonLoading === 'function') setButtonLoading(submitBtn, true, 'Authenticating...');
 
         try {
-            //  1. Use secureFetch to automatically handle cookies and JSON parsing
-            const data = await secureFetch('/accounts/v1/auth/login/', 'POST', { username, password });
+            const res = await fetch('/accounts/v1/auth/login/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCookie('csrftoken'),
+                },
+                credentials: 'include',
+                body: JSON.stringify({ username, password }),
+            });
 
-            //  2. Check the response status based on your API schema layout
-            if (data && data.st === 200) {
-                showAlert(data.msg, false);
+            const data = await res.json();
+            if (typeof hideLoader === 'function') hideLoader();
+            if (typeof setButtonLoading === 'function') setButtonLoading(submitBtn, false);
 
-                //  3. CRITICAL: Set the frontend session guard marker before moving pages!
+            if (res.ok && data && data.st === 200) {
+                if (typeof showAlert === 'function') showAlert(data.msg || "Login successful!", 'success', 'authAlertBox');
                 sessionStorage.setItem("is_logged_in", "true");
-                if (data.data && data.data.username) {
-                    sessionStorage.setItem("username", data.data.username);
-                }
-
-                // Route user safely to the dashboard
-                setTimeout(() => window.location.href = "/dashboard", 800);
+                setTimeout(() => window.location.href = "/dashboard/", 800);
             } else {
-                showAlert((data && data.msg) || "Login failed.");
+                if (typeof showAlert === 'function') showAlert((data && data.msg) || "Invalid credentials.", 'error', 'authAlertBox');
             }
         } catch (err) {
-            showAlert("Network connection error.");
+            if (typeof hideLoader === 'function') hideLoader();
+            if (typeof setButtonLoading === 'function') setButtonLoading(submitBtn, false);
+            if (typeof showAlert === 'function') showAlert("Network connection error.", 'error', 'authAlertBox');
         }
     }
-
 
     async function submitSignupStep1(e) {
         e.preventDefault();
         userState.mobile = document.getElementById('signupMobile').value.trim();
         userState.email = document.getElementById('signupEmail').value.trim();
         activeOtpType = 'SIGNUP';
+        const submitBtn = document.getElementById('btnSignupSubmit');
+
+        if (typeof showLoader === 'function') showLoader('Sending verification OTP...');
+        if (typeof setButtonLoading === 'function') setButtonLoading(submitBtn, true, 'Sending OTP...');
+
         try {
             const res = await fetch('/accounts/v1/auth/signup/', {
                 method: 'POST',
-                 headers: {
+                headers: {
                     'Content-Type': 'application/json',
-                    'X-CSRFToken': csrftoken
+                    'X-CSRFToken': getCookie('csrftoken')
                 },
                 body: JSON.stringify({ mobile: userState.mobile, email: userState.email })
             });
             const data = await res.json();
-            if (data.st === 201 || data.st === 200) {
-                showAlert(data.msg, false);
+            if (typeof hideLoader === 'function') hideLoader();
+            if (typeof setButtonLoading === 'function') setButtonLoading(submitBtn, false);
+
+            if (res.ok && (data.st === 201 || data.st === 200)) {
+                if (typeof showAlert === 'function') showAlert(data.msg || "OTP sent successfully!", 'success', 'authAlertBox');
                 setTimeout(() => switchModalView('otp'), 600);
-            } else { showAlert(data.msg || "Signup error."); }
-        } catch (err) { showAlert("Network connection error."); }
+            } else {
+                if (typeof showAlert === 'function') showAlert(data.msg || "Signup error.", 'error', 'authAlertBox');
+            }
+        } catch (err) {
+            if (typeof hideLoader === 'function') hideLoader();
+            if (typeof setButtonLoading === 'function') setButtonLoading(submitBtn, false);
+            if (typeof showAlert === 'function') showAlert("Network connection error.", 'error', 'authAlertBox');
+        }
     }
 
     async function submitForgotStep1(e) {
@@ -236,104 +251,155 @@
         userState.mobile = document.getElementById('forgotMobile').value.trim();
         userState.email = document.getElementById('forgotEmail').value.trim();
         activeOtpType = 'FORGOT_PASSWORD';
+        const submitBtn = document.getElementById('btnForgotSubmit');
+
+        if (typeof showLoader === 'function') showLoader('Triggering password reset...');
+        if (typeof setButtonLoading === 'function') setButtonLoading(submitBtn, true, 'Sending Reset OTP...');
+
         try {
             const res = await fetch('/accounts/v1/auth/resend-otp/', {
                 method: 'POST',
-                 headers: {
+                headers: {
                     'Content-Type': 'application/json',
-                    'X-CSRFToken': csrftoken
+                    'X-CSRFToken': getCookie('csrftoken')
                 },
                 body: JSON.stringify({ mobile: userState.mobile, email: userState.email, otp_type: activeOtpType })
             });
             const data = await res.json();
-            if (data.st === 200) {
-                showAlert("Reset OTP sent successfully.", false);
+            if (typeof hideLoader === 'function') hideLoader();
+            if (typeof setButtonLoading === 'function') setButtonLoading(submitBtn, false);
+
+            if (res.ok && data.st === 200) {
+                if (typeof showAlert === 'function') showAlert("Reset OTP sent successfully.", 'success', 'authAlertBox');
                 setTimeout(() => switchModalView('otp'), 600);
-            } else { showAlert(data.msg || "Failed to trigger reset OTP."); }
-        } catch (err) { showAlert("Network connection error."); }
+            } else {
+                if (typeof showAlert === 'function') showAlert(data.msg || "Failed to trigger reset OTP.", 'error', 'authAlertBox');
+            }
+        } catch (err) {
+            if (typeof hideLoader === 'function') hideLoader();
+            if (typeof setButtonLoading === 'function') setButtonLoading(submitBtn, false);
+            if (typeof showAlert === 'function') showAlert("Network connection error.", 'error', 'authAlertBox');
+        }
     }
 
     async function submitVerifyOtp(e) {
         e.preventDefault();
         const otp = document.getElementById('otpCode').value.trim();
+        const submitBtn = document.getElementById('btnVerifyOtpSubmit');
+
+        if (typeof showLoader === 'function') showLoader('Verifying OTP code...');
+        if (typeof setButtonLoading === 'function') setButtonLoading(submitBtn, true, 'Verifying...');
+
         try {
             const res = await fetch('/accounts/v1/auth/verify-otp/', {
                 method: 'POST',
-                 headers: {
+                headers: {
                     'Content-Type': 'application/json',
-                    'X-CSRFToken': csrftoken
+                    'X-CSRFToken': getCookie('csrftoken')
                 },
                 body: JSON.stringify({ mobile: userState.mobile, email: userState.email, otp: otp, otp_type: activeOtpType })
             });
             const data = await res.json();
-            if (data.st === 200) {
-                showAlert(data.msg, false);
-                window.tempVerifiedOtp = otp;
+            if (typeof hideLoader === 'function') hideLoader();
+            if (typeof setButtonLoading === 'function') setButtonLoading(submitBtn, false);
+
+            if (res.ok && data.st === 200) {
+                if (typeof showAlert === 'function') showAlert(data.msg || "OTP verified!", 'success', 'authAlertBox');
+                tempVerifiedOtp = otp;
                 setTimeout(() => switchModalView('setpassword'), 600);
-            } else { showAlert(data.msg || "Invalid OTP code."); }
-        } catch (err) { showAlert("Network connection error."); }
+            } else {
+                if (typeof showAlert === 'function') showAlert(data.msg || "Invalid OTP code.", 'error', 'authAlertBox');
+            }
+        } catch (err) {
+            if (typeof hideLoader === 'function') hideLoader();
+            if (typeof setButtonLoading === 'function') setButtonLoading(submitBtn, false);
+            if (typeof showAlert === 'function') showAlert("Network connection error.", 'error', 'authAlertBox');
+        }
     }
 
     async function triggerResendOtp() {
+        if (typeof showLoader === 'function') showLoader('Resending OTP...');
         try {
             const res = await fetch('/accounts/v1/auth/resend-otp/', {
                 method: 'POST',
-                 headers: {
+                headers: {
                     'Content-Type': 'application/json',
-                    'X-CSRFToken': csrftoken
+                    'X-CSRFToken': getCookie('csrftoken')
                 },
                 body: JSON.stringify({ mobile: userState.mobile, email: userState.email, otp_type: activeOtpType })
             });
             const data = await res.json();
-            if (data.st === 200) {
-                showAlert(data.msg, false);
+            if (typeof hideLoader === 'function') hideLoader();
+
+            if (res.ok && data.st === 200) {
+                if (typeof showAlert === 'function') showAlert(data.msg || "OTP resent successfully.", 'success', 'authAlertBox');
                 startCountdownTimer();
-            } else { showAlert(data.msg || "Could not resend OTP."); }
-        } catch (err) { showAlert("Network error."); }
+            } else {
+                if (typeof showAlert === 'function') showAlert(data.msg || "Could not resend OTP.", 'error', 'authAlertBox');
+            }
+        } catch (err) {
+            if (typeof hideLoader === 'function') hideLoader();
+            if (typeof showAlert === 'function') showAlert("Network error.", 'error', 'authAlertBox');
+        }
     }
 
     async function submitSetPassword(e) {
         e.preventDefault();
         const password = document.getElementById('newPassword').value;
         const confirmPassword = document.getElementById('confirmPassword').value;
+        const submitBtn = document.getElementById('btnSetPassSubmit');
+
         if (password !== confirmPassword) {
-            showAlert("Passwords do not match.");
+            if (typeof showAlert === 'function') showAlert("Passwords do not match.", 'error', 'authAlertBox');
             return;
         }
+
+        if (typeof showLoader === 'function') showLoader('Updating password & securing account...');
+        if (typeof setButtonLoading === 'function') setButtonLoading(submitBtn, true, 'Saving...');
+
         try {
             const res = await fetch('/accounts/v1/auth/set-password/', {
                 method: 'POST',
-                 headers: {
+                headers: {
                     'Content-Type': 'application/json',
-                    'X-CSRFToken': csrftoken
+                    'X-CSRFToken': getCookie('csrftoken')
                 },
-                body: JSON.stringify({ mobile: userState.mobile, email: userState.email, otp: window.tempVerifiedOtp, otp_type: activeOtpType, password: password })
+                body: JSON.stringify({ mobile: userState.mobile, email: userState.email, otp: tempVerifiedOtp, otp_type: activeOtpType, password: password })
             });
             const data = await res.json();
-            if (data.st === 200) {
-                showAlert(data.msg, false);
-                if (data.data && data.data.access_token) {
+            if (typeof hideLoader === 'function') hideLoader();
+            if (typeof setButtonLoading === 'function') setButtonLoading(submitBtn, false);
+
+            if (res.ok && data.st === 200) {
+                if (typeof showAlert === 'function') showAlert(data.msg || "Password updated successfully!", 'success', 'authAlertBox');
+                if (data.data && data.data.access_token && typeof SecureStorage !== 'undefined') {
                     SecureStorage.setItem('access_token', data.data.access_token);
                     SecureStorage.setItem('refresh_token', data.data.refresh_token);
                 }
                 setTimeout(() => window.location.href = "/dashboard/", 1000);
-            } else { showAlert(data.msg || "Failed to set password."); }
-        } catch (err) { showAlert("Network connection error."); }
+            } else {
+                if (typeof showAlert === 'function') showAlert(data.msg || "Failed to set password.", 'error', 'authAlertBox');
+            }
+        } catch (err) {
+            if (typeof hideLoader === 'function') hideLoader();
+            if (typeof setButtonLoading === 'function') setButtonLoading(submitBtn, false);
+            if (typeof showAlert === 'function') showAlert("Network connection error.", 'error', 'authAlertBox');
+        }
     }
 
     function startCountdownTimer() {
         let seconds = 60;
         const display = document.getElementById('otpTimerDisplay');
         const btn = document.getElementById('resendOtpBtn');
-        btn.disabled = true;
+        if (btn) btn.disabled = true;
         if (countdownTimerRef) clearInterval(countdownTimerRef);
         countdownTimerRef = setInterval(() => {
             seconds--;
-            display.textContent = `Resend in ${seconds}s`;
+            if (display) display.textContent = `Resend in ${seconds}s`;
             if (seconds <= 0) {
                 clearInterval(countdownTimerRef);
-                display.textContent = `Didn't receive code?`;
-                btn.disabled = false;
+                if (display) display.textContent = `Didn't receive code?`;
+                if (btn) btn.disabled = false;
             }
         }, 1000);
     }

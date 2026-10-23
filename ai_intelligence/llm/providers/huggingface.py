@@ -42,9 +42,18 @@ class HuggingFaceProvider(LLMProvider):
 
     capabilities = frozenset({ProviderCapability.TEXT_GENERATION, ProviderCapability.STRUCTURED_OUTPUT})
 
-    def __init__(self, model_id: str, api_token: str, base_url: str | None = None, timeout_seconds: int = 60):
+    def __init__(self, model_id: str, api_token: str, base_url: str | None = None,
+                timeout_seconds: int = 60, hf_inference_provider: str | None = None):
         super().__init__(model_id)
-        self._client = InferenceClient(model=base_url or model_id, token=api_token, timeout=timeout_seconds)
+        # "provider" here is HF's Inference Providers backend (hf-inference, groq,
+        # together, ...) - NOT our own AI_LLM_PROVIDER abstraction ("huggingface").
+        # Explicit, not "auto": auto-routing failed with "not supported by any
+        # provider you have enabled" during setup - being explicit is also more
+        # predictable for a production deployment anyway.
+        self._client = InferenceClient(
+            model=base_url or model_id, token=api_token, timeout=timeout_seconds,
+            provider=hf_inference_provider or "hf-inference",
+        )
         self._timeout_seconds = timeout_seconds
 
     @property

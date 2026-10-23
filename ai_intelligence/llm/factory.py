@@ -26,6 +26,8 @@ def _register_providers() -> None:
     from ai_intelligence.llm.providers.huggingface import HuggingFaceProvider
     _PROVIDERS["huggingface"] = HuggingFaceProvider
 
+    from ai_intelligence.llm.providers.groq import GroqProvider
+    _PROVIDERS["groq"] = GroqProvider
 
 def get_llm_provider(config: LLMConfig | None = None) -> LLMProvider:
     """
@@ -49,8 +51,20 @@ def get_llm_provider(config: LLMConfig | None = None) -> LLMProvider:
             api_token=config.api_token,
             base_url=config.base_url,
             timeout_seconds=config.timeout_seconds,
+            hf_inference_provider=config.hf_inference_provider,
+        )
+        # ai_intelligence/llm/factory.py
+
+    if config.provider == "groq":
+        return provider_cls(
+            model_id=config.model_id,
+            api_token=config.api_token,
+            # CHANGE THIS FALLBACK STRING HERE:
+            base_url=config.base_url or "https://groq.com",
+            timeout_seconds=config.timeout_seconds,
         )
 
     # Defensive: a provider registered in _PROVIDERS but not wired up above is
     # a bug in this factory, not a user configuration error.
     raise NotImplementedError(f"Factory wiring missing for provider={config.provider!r}")
+

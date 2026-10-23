@@ -13,7 +13,7 @@ from django.conf import settings
 
 from ai_intelligence.domain.exceptions import LLMConfigurationError
 
-SUPPORTED_PROVIDERS = {"huggingface"}   # grows as llm/providers/ gains adapters
+SUPPORTED_PROVIDERS = {"huggingface","groq"}   # grows as llm/providers/ gains adapters
 
 
 @dataclass(frozen=True)
@@ -24,6 +24,9 @@ class LLMConfig:
     api_token: str | None
     temperature: float
     timeout_seconds: int
+    hf_inference_provider: str | None = None   # which HF "Inference Provider" backend
+                                               # (hf-inference, groq, together, ...) -
+                                               # only meaningful when provider="huggingface"
 
 
 def load_llm_config() -> LLMConfig:
@@ -62,6 +65,8 @@ def load_llm_config() -> LLMConfig:
     if timeout_seconds <= 0:
         raise LLMConfigurationError("AI_LLM_TIMEOUT_SECONDS must be positive.")
 
+    hf_inference_provider = (getattr(settings, "AI_HF_INFERENCE_PROVIDER", "") or "").strip() or None
+
     return LLMConfig(
         provider=provider,
         model_id=model_id,
@@ -69,4 +74,5 @@ def load_llm_config() -> LLMConfig:
         api_token=api_token,
         temperature=temperature,
         timeout_seconds=timeout_seconds,
+        hf_inference_provider=hf_inference_provider,
     )

@@ -67,7 +67,7 @@ def parse_amfi(text):
             continue
         amfi_code = parts[0]
         try:
-            nav = Decimal(parts[4])
+            nav = Decimal(parts[6])
             nav_date = datetime.strptime(parts[7], "%d-%b-%Y").date()
             if nav <= 0:
                 raise ValueError("non-positive NAV")

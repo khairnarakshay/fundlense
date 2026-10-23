@@ -12,9 +12,12 @@ https://docs.djangoproject.com/en/4.2/ref/settings/
 import os
 from datetime import timedelta
 from pathlib import Path
-
+from pathlib import Path
+from dotenv import load_dotenv
+import os
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
+load_dotenv(BASE_DIR / ".env")
 
 
 # Quick-start development settings - unsuitable for production
@@ -199,6 +202,14 @@ EMAIL_HOST = 'smtp.gmail.com'
 EMAIL_HOST_USER  ='fundlenseai@gmail.com'
 EMAIL_HOST_PASSWORD = 'yoimqkimmuduljvy'
 EMAIL_PORT = 587
+
+AI_LLM_PROVIDER = os.environ.get("AI_LLM_PROVIDER", "huggingface")
+AI_LLM_MODEL_ID = os.environ.get("AI_LLM_MODEL_ID", "")
+AI_LLM_API_TOKEN = os.environ.get("AI_LLM_API_TOKEN", "")
+AI_HF_INFERENCE_PROVIDER = os.environ.get("AI_HF_INFERENCE_PROVIDER", "hf-inference")
+AI_LLM_TEMPERATURE = os.environ.get("AI_LLM_TEMPERATURE", "0.1")
+AI_LLM_TIMEOUT_SECONDS = os.environ.get("AI_LLM_TIMEOUT_SECONDS", "60")
+
 
 import logging
 

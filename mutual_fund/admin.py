@@ -235,3 +235,97 @@ class MutualFundReturnStatAdmin(admin.ModelAdmin):
 
     def get_queryset(self, request):
         return super().get_queryset(request).select_related("scheme")
+
+from django.contrib import admin
+from .models import MutualFundNavSyncLog
+
+
+@admin.register(MutualFundNavSyncLog)
+class MutualFundNavSyncLogAdmin(admin.ModelAdmin):
+    # Columns displayed in the list view
+    list_display = (
+        "nav_date",
+        "status",
+        "run_count",
+        "started_at",
+        "finished_at",
+        "inserted_count",
+        "updated_count",
+    )
+
+    # Filters available in the right sidebar
+    list_filter = ("status", "nav_date")
+
+    # Fields made read-only to prevent accidental tampering with logs
+    readonly_fields = (
+        "started_at",
+        "finished_at",
+        "run_count",
+    )
+
+    # Grouped layout for the detail view
+    fieldsets = (
+        (
+            "Execution Details",
+            {
+                "fields": (
+                    "nav_date",
+                    "status",
+                    "run_count",
+                    "started_at",
+                    "finished_at",
+                )
+            },
+        ),
+        (
+            "Data Feed & Insertion Metrics",
+            {
+                "fields": (
+                    "active_schemes",
+                    "rows_in_feed",
+                    "inserted_count",
+                    "updated_count",
+                    "carried_forward_count",
+                )
+            },
+        ),
+        (
+            "Exceptions & Anomalies",
+            {
+                "fields": (
+                    "missing_count",
+                    "unmapped_count",
+                    "parse_error_count",
+                    "missing_amfi_codes",
+                )
+            },
+        ),
+        (
+            "Scheme Closure Metrics",
+            {
+                "fields": (
+                    "skipped_closed_count",
+                    "newly_closed_count",
+                    "total_closed",
+                    "closed_but_reporting",
+                )
+            },
+        ),
+        (
+            "Performance Stats Calculation",
+            {
+                "fields": (
+                    "stats_computed",
+                    "stats_failed",
+                    "stats_skipped_closed",
+                )
+            },
+        ),
+        (
+            "Error Logs",
+            {
+                "classes": ("collapse",),  # Keeps long errors hidden by default
+                "fields": ("error_message",),
+            },
+        ),
+    )

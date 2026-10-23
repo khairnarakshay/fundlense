@@ -5,6 +5,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.views import APIView
 from django.utils import timezone
 from cas_parser.models import CASStatement, CASTransaction
+from cas_parser.services.get_invested_schems import get_invested_schemes
 from portfolio.services.api_services.value_history import get_portfolio_history, get_invested_series, _parse_period, \
     get_value_series
 from core.pagination import paginate
@@ -328,4 +329,35 @@ class PortfolioCurrentValueAPIView(APIView):
             # them with, so missing from value_series. Empty list = everything priced.
             "excluded_from_value_graph": excluded,
         }
+        return api_response(200, "Data fetched successfully", data=data)
+
+
+class PortfolioInvestedSchemesAPIView(APIView):
+    """
+    POST /api/portfolio/invested-schemes/
+
+    Returns the unique list of mutual-fund schemes the authenticated user
+    has invested in.  The same scheme held under multiple folios or multiple
+    CAS statements appears only once.
+
+    Each item: {scheme_id, scheme_name, isin, amfi_code}
+    `scheme_id` is null when the holding is not yet resolved against
+    MutualFundsScheme.
+    """
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        try:
+            invested_schemes = get_invested_schemes(request.user)
+        except ValueError as exc:
+            return api_response(400, str(exc))
+        except Exception:  # noqa: BLE001
+            logger.exception(
+                "invested schemes lookup failed for user_id=%s", request.user.id
+            )
+            return api_response(
+                500, "Something went wrong while fetching invested schemes"
+            )
+
+        data = {"invested_schemes": invested_schemes}
         return api_response(200, "Data fetched successfully", data=data)

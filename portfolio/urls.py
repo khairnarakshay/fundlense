@@ -13,6 +13,7 @@ urlpatterns = [
     path("invested-value/", PortfolioInvestedValueAPIView.as_view(), name="portfolio-invested-value"),
     path("current-value/", PortfolioCurrentValueAPIView.as_view(), name="portfolio-current-value"),
     path("value-history/", PortfolioValueHistoryAPIView.as_view(), name="portfolio-value-history"),
+    path("invested-schemes/", PortfolioInvestedSchemesAPIView.as_view(), name="portfolio-invested-schemes"),
 
 ]
 

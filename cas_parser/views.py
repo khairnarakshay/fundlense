@@ -8,17 +8,17 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.views import APIView
 from django.utils import timezone
 from cas_parser.models import CASStatement, CASTransaction
-from cas_parser.services.api_services.value_history import get_portfolio_history, get_invested_series, _parse_period, \
+from portfolio.services.api_services.value_history import get_portfolio_history, get_invested_series, _parse_period, \
     get_value_series
 # from cas_parser.services.api_services.value_history import get_portfolio_history
 from cas_parser.services.hashing import compute_file_hash
 from cas_parser.services.ingest import process_cas_statement
 from core.pagination import paginate
 from core.response import api_response   # reuse the same {st, msg, data} envelope everywhere
-from cas_parser.services.api_services.allocation import by_amc, by_asset_type
-from cas_parser.services.api_services.holdings import cost_basis, get_current_holdings, market_value, live_market_value
-from cas_parser.services.api_services.insights import top_and_needs_attention
-from cas_parser.services.api_services.returns_by_category import returns_by_category
+from portfolio.services.api_services.allocation import by_amc, by_asset_type
+from portfolio.services.api_services.holdings import cost_basis, get_current_holdings, market_value, live_market_value
+from portfolio.services.api_services.insights import top_and_needs_attention
+from portfolio.services.api_services.returns_by_category import returns_by_category
 
 logger = logging.getLogger(__name__)
 

@@ -22,5 +22,10 @@ urlpatterns = [
     path('accounts/v1/', include('accounts.urls')),
     path('mf/v1/', include('mutual_fund.urls')),
     path('cas_parser/v1/', include('cas_parser.urls')),
+    path('portfolio/v1/', include('portfolio.urls')),
+
     path('', include('frontend.urls')),
+
+    path("ai/api/v1/", include("ai_intelligence.urls")),
+
 ]

@@ -190,7 +190,7 @@ class MutualFundPortfolioStatAdmin(admin.ModelAdmin):
 class MutualFundNAVAdmin(admin.ModelAdmin):
     list_display = ("scheme", "nav_date", "nav", "is_carry_forward")
     list_filter = ("is_carry_forward", "nav_date", "scheme")
-    search_fields = ("scheme__name",)  # Assumes MutualFundsScheme has a 'name' field
+    search_fields = ('scheme__amfi_code', 'scheme__scheme_name')
     date_hierarchy = "nav_date"
     ordering = ("-nav_date", "scheme")
     list_per_page = 50

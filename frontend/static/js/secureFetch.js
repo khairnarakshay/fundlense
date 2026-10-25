@@ -74,25 +74,34 @@ function checkAuthOrRedirect() {
  * @returns {Promise<any>} The parsed JSON data response from the server.
  */
 async function secureFetch(url, method = 'GET', bodyData = null) {
-    // 1. Build out the options profile dynamically
+    // 1. Check if the incoming data is a FormData instance
+    const isFormData = bodyData instanceof FormData;
+
+    // 2. Build out the options profile dynamically
     const options = {
         method: method,
         headers: {
-            'Content-Type': 'application/json',
             'X-CSRFToken': getCookie('XSRF-TOKEN') // Attaches the CSRF safety token
         },
         credentials: 'include' // 🔑 CRITICAL: Automatically transmits HttpOnly cookies
     };
 
+    // 3. Only apply JSON Content-Type if it's NOT a file/FormData upload
+    if (!isFormData) {
+        options.headers['Content-Type'] = 'application/json';
+    }
+
+    // 4. Handle the body payload correctly based on data type
     if (bodyData && ['POST', 'PUT', 'PATCH', 'DELETE'].includes(method.toUpperCase())) {
-        options.body = JSON.stringify(bodyData);
+        // If it's FormData, pass it directly. If it's a regular object, stringify it.
+        options.body = isFormData ? bodyData : JSON.stringify(bodyData);
     }
 
     try {
-        // 2. Transmit the unified request to your server
+        // 5. Transmit the unified request to your server
         const res = await fetch(url, options);
 
-        // 3. Centralized Token Expiration Guard Interrupt 🛡️
+        // 6. Centralized Token Expiration Guard Interrupt 🛡️
         if (res.status === 401) {
             alert("Session expired. Please log in again.");
             if (typeof window.logoutUser === 'function') {
@@ -104,12 +113,12 @@ async function secureFetch(url, method = 'GET', bodyData = null) {
             return null;
         }
 
-        // 4. Centralized Server Error Validation
+        // 7. Centralized Server Error Validation
         if (!res.ok) {
             throw new Error(`API error status received: ${res.status}`);
         }
 
-        // 5. Natively extract and return the inner JSON data
+        // 8. Natively extract and return the inner JSON data
         return await res.json();
 
     } catch (error) {

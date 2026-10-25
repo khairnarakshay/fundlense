@@ -27,105 +27,74 @@ logger = logging.getLogger(__name__)
 
 # Create your views here.
 class SignInAPIView(APIView):
+    """Authenticate credentials without requiring an existing access token."""
 
-    permission_classes = []
-
+    permission_classes = [AllowAny]
+    authentication_classes = []
     serializer_class = LoginSerializer
 
     def post(self, request):
-
-        serializer = self.serializer_class(
-            data=request.data
-        )
+        """Validate credentials and replace existing authentication cookies."""
+        serializer = self.serializer_class(data=request.data)
 
         if not serializer.is_valid():
-
-            return Response(
-                {
-                    "st": 101,
-                    "msg": "Validation failed.",
-                    "errors": serializer.errors,
-                    "data": []
-                },
-                status=status.HTTP_400_BAD_REQUEST
+            return api_response(
+                status.HTTP_400_BAD_REQUEST,
+                "Validation failed.",
+                data={"errors": serializer.errors},
             )
 
-        username = serializer.validated_data.get(
-            "username"
-        )
+        username = serializer.validated_data["username"]
+        password = serializer.validated_data["password"]
 
-        password = serializer.validated_data.get(
-            "password"
-        )
-        print("password",password,"\n" "username",username)
-        user = authenticate(
-            username=username,
-            password=password
-        )
+        user = authenticate(username=username, password=password)
 
-        if not user:
-
-            return Response(
-                {
-                    "st": 102,
-                    "msg": "Invalid username or password.",
-                    "data": []
-                },
-                status=status.HTTP_401_UNAUTHORIZED
+        if user is None:
+            return api_response(
+                status.HTTP_401_UNAUTHORIZED,
+                "Invalid username or password.",
             )
 
         if not user.is_active:
-
-            return Response(
-                {
-                    "st": 103,
-                    "msg": "User account is inactive.",
-                    "data": []
-                },
-                status=status.HTTP_403_FORBIDDEN
+            return api_response(
+                status.HTTP_403_FORBIDDEN,
+                "User account is inactive.",
             )
-
-
 
         refresh = RefreshToken.for_user(user)
         access_token = str(refresh.access_token)
         refresh_token = str(refresh)
 
-        user_data = UserSerializer(user).data
-
         response = api_response(
             status.HTTP_200_OK,
             "Login successful.",
-            user_data
+            data=UserSerializer(user).data,
         )
 
-        # Determine secure status based on settings profile
         is_secure = not settings.DEBUG
+        cookie_domain = getattr(settings, "AUTH_COOKIE_DOMAIN", None)
 
-        # Inject the Access Token Cookie dynamically 🔑
         response.set_cookie(
-            key='access_token',
+            key="access_token",
             value=access_token,
             httponly=True,
             secure=is_secure,
-            samesite='Lax',
-            domain=settings.AUTH_COOKIE_DOMAIN,  # 👈 Dynamic: None locally, .fundlense.com in production
-            path='/'
+            samesite="Lax",
+            domain=cookie_domain,
+            path="/",
         )
 
-        # Inject the Refresh Token Cookie dynamically
         response.set_cookie(
-            key='refresh_token',
+            key="refresh_token",
             value=refresh_token,
             httponly=True,
             secure=is_secure,
-            samesite='Lax',
-            domain=settings.AUTH_COOKIE_DOMAIN,  # 👈 Dynamic
-            path='/api/token/refresh/'
+            samesite="Lax",
+            domain=cookie_domain,
+            path="/api/token/refresh/",
         )
 
         return response
-
 class SignOutAPIView(APIView):
     # Ensure only logged-in users can call this, using your custom cookie auth pipeline
     permission_classes = [IsAuthenticated]

@@ -220,14 +220,9 @@
     async function fetchStatementsList() {
         const tbody = document.getElementById('statementsTableBody');
         try {
-            const res = await fetch('/cas_parser/v1/statements', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRFToken': getCookie('csrftoken')
-                }
-            });
-            const result = await res.json();
+            const result = await secureFetch('/cas_parser/v1/statements/','POST' )
+
+
 
             if (result.st === 200 && result.data.length > 0) {
                 tbody.innerHTML = '';
@@ -279,7 +274,7 @@
         loader.classList.add('d-flex');
 
         try {
-            const result = await secureFetch('/cas_parser/v1/upload/', 'POST')
+            const result = await secureFetch('/cas_parser/v1/upload/', 'POST',formData) ;
 
             loader.classList.remove('d-flex');
             loader.classList.add('d-none');
@@ -306,7 +301,6 @@
         try {
             const result = await secureFetch(`/cas_parser/v1/statements/delete/${id}/`, 'DELETE');
 
-            const result = await res.json();
 
             if (result.st === 200) {
                 showBannerToast(result.msg, false);

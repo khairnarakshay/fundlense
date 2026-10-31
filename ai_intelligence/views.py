@@ -15,9 +15,8 @@ from rest_framework.views import APIView
 
 from ai_intelligence.application.chat_service import ChatInputError, ask_portfolio_question
 from ai_intelligence.application.portfolio_analysis_service import get_portfolio_analysis
-from ai_intelligence.domain.exceptions import (
-    CapabilityNotSupportedError, LLMConfigurationError, LLMProviderError, LLMTimeoutError,
-)
+from ai_intelligence.application.portfolio_report_service import generate_portfolio_report
+from ai_intelligence.domain.exceptions import LLMConfigurationError, LLMProviderError
 from core.response import api_response   # <- confirm/adjust this import path
 
 logger = logging.getLogger(__name__)
@@ -38,21 +37,42 @@ class ChatAPIView(APIView):
             result = ask_portfolio_question(request.user, question)
         except ChatInputError as exc:
             return api_response(400, str(exc))
-        except CapabilityNotSupportedError as exc:
-            # the configured provider/model can't do something this call needed -
-            # a config issue, not a transient failure, so log it for visibility
-            logger.error("AI chat capability not supported: %s", exc)
-            return api_response(400, str(exc))
         except LLMConfigurationError as exc:
             logger.error("AI chat misconfigured: %s", exc)
             return api_response(500, "The AI assistant is not configured correctly.")
-        except LLMTimeoutError:
-            return api_response(504, "The AI assistant took too long to respond. Please try again.")
         except LLMProviderError:
+            # covers whatever LangChain/the underlying provider raised - network
+            # error, rate limit, timeout, bad response - normalized to one type
+            # by chat_service.py so this is the only provider-failure branch needed.
             logger.exception("AI provider error during chat for user_id=%s", request.user.id)
             return api_response(502, "The AI assistant is temporarily unavailable. Please try again.")
         except Exception:                                   # noqa: BLE001
             logger.exception("Unexpected error during chat for user_id=%s", request.user.id)
+            return api_response(500, "Something went wrong.")
+
+        return api_response(200, "Data fetched successfully", data=result)
+
+
+class PortfolioReportAPIView(APIView):
+    """
+    POST /api/ai/portfolio-report/ - the dashboard report: deterministic analysis
+    + an LLM-written narrative of it. Separate from /chat/ (free-form questions).
+    The narrative is cached per user, so repeated dashboard loads don't each
+    cost an LLM call; "cached" in the response says which one you got.
+    """
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        try:
+            result = generate_portfolio_report(request.user)
+        except LLMConfigurationError as exc:
+            logger.error("AI report misconfigured: %s", exc)
+            return api_response(500, "The AI assistant is not configured correctly.")
+        except LLMProviderError:
+            logger.exception("AI provider error during report for user_id=%s", request.user.id)
+            return api_response(502, "The AI assistant is temporarily unavailable. Please try again.")
+        except Exception:                                   # noqa: BLE001
+            logger.exception("Unexpected error during report for user_id=%s", request.user.id)
             return api_response(500, "Something went wrong.")
 
         return api_response(200, "Data fetched successfully", data=result)

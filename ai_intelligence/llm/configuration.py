@@ -13,7 +13,7 @@ from django.conf import settings
 
 from ai_intelligence.domain.exceptions import LLMConfigurationError
 
-SUPPORTED_PROVIDERS = {"huggingface","groq"}   # grows as llm/providers/ gains adapters
+SUPPORTED_PROVIDERS = {"huggingface", "groq", "gemini"}   # grows as llm/factory.py gains branches
 
 
 @dataclass(frozen=True)
@@ -49,9 +49,12 @@ def load_llm_config() -> LLMConfig:
             "the configured token has access to, but one must be provided.")
 
     api_token = (getattr(settings, "AI_LLM_API_TOKEN", "") or "").strip() or None
-    if provider == "huggingface" and not api_token:
-        raise LLMConfigurationError(
-            "AI_LLM_API_TOKEN is required for provider='huggingface' (hosted Inference API).")
+    if not api_token:
+        # every currently supported provider (huggingface, groq, gemini) is a
+        # hosted API needing a key - generalized rather than one carve-out per
+        # provider name, so adding a provider later doesn't require touching
+        # this check unless it's genuinely keyless (e.g. a local model).
+        raise LLMConfigurationError(f"AI_LLM_API_TOKEN is required for provider={provider!r}.")
 
     try:
         temperature = float(getattr(settings, "AI_LLM_TEMPERATURE", 0.1))

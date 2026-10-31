@@ -14,59 +14,14 @@ file only has the provider-facing shapes needed for Phase 2.
 from __future__ import annotations
 
 from datetime import datetime
-from enum import Enum
 from typing import Any
 
 from pydantic import BaseModel, Field
 
-
-class MessageRole(str, Enum):
-    SYSTEM = "system"
-    USER = "user"
-    ASSISTANT = "assistant"
-
-
-class ChatMessage(BaseModel):
-    """One turn in a conversation sent to an LLM provider."""
-    role: MessageRole
-    content: str
-
-
-class GenerationParams(BaseModel):
-    """Generation parameters a caller may override; each provider adapter
-    translates these into whatever shape its underlying client expects."""
-    temperature: float = Field(default=0.1, ge=0.0, le=2.0)
-    max_tokens: int = Field(default=1024, gt=0)
-    timeout_seconds: int = Field(default=60, gt=0)
-    stop: list[str] | None = None
-
-
-class GenerationResult(BaseModel):
-    """Normalized result from any provider - the orchestration layer never sees
-    a provider-specific response object."""
-    content: str
-    provider: str
-    model_id: str
-    finish_reason: str | None = None
-    prompt_tokens: int | None = None
-    completion_tokens: int | None = None
-    latency_ms: float | None = None
-    raw: dict[str, Any] | None = None   # provider's raw response - populate only where tracing needs it
-
-
-class ProviderCapability(str, Enum):
-    TEXT_GENERATION = "text_generation"
-    STRUCTURED_OUTPUT = "structured_output"
-    STREAMING = "streaming"
-    TOOL_CALLING = "tool_calling"
-
-
-class ProviderHealth(BaseModel):
-    healthy: bool
-    provider: str
-    model_id: str
-    checked_at: datetime
-    detail: str | None = None
+# Message types (ChatMessage/role, etc.) are intentionally NOT defined here -
+# langchain_core.messages.SystemMessage/HumanMessage/AIMessage are used
+# directly throughout this app instead of a parallel custom type. See
+# llm/factory.py and application/chat_service.py.
 
 
 # ---------------------------------------------------------------------------
@@ -129,6 +84,25 @@ class DataCompletenessWarning(BaseModel):
     affected_schemes: list[str] = Field(default_factory=list)
 
 
+class HoldingAnalysis(BaseModel):
+    """One holding's row in the deterministic analysis. ret_1y / cagr_3y are the
+    FUND's own market performance (MutualFundReturnStat), NOT this investor's
+    personal return - personal XIRR is not computed yet (see not_computed)."""
+    scheme_name: str
+    isin: str
+    amc_name: str
+    category: str | None = None
+    market_value: float
+    weight_percent: float | None = None      # None when the holding has no live price
+    cost_basis: float | None = None
+    gain: float | None = None
+    gain_percent: float | None = None
+    ret_1y: float | None = None
+    cagr_3y: float | None = None
+    expense_ratio: float | None = None
+    is_scheme_resolved: bool
+
+
 class PortfolioAnalysisResult(BaseModel):
     """Output of the deterministic analysis engine. Every field here is
     computed directly from a PortfolioSnapshot - nothing is LLM-generated.
@@ -147,3 +121,17 @@ class PortfolioAnalysisResult(BaseModel):
     portfolio_weighted_volatility_1y: float | None
     warnings: list[DataCompletenessWarning]
     not_computed: list[str]
+    holdings: list[HoldingAnalysis] = Field(default_factory=list)
+
+
+class PortfolioReportNarrative(BaseModel):
+    """The LLM-written sections of the dashboard report. Every number in these
+    strings must be copied from PortfolioAnalysisResult - the model is told not
+    to calculate anything itself (prompts/portfolio_report.py)."""
+    overview: str
+    performance: str
+    allocation_and_diversification: str
+    concentration_and_risk: str
+    cost_observations: str
+    data_quality_notes: str
+    points_to_review: list[str]

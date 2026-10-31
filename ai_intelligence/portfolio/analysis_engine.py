@@ -14,7 +14,7 @@ from collections import defaultdict
 
 from ai_intelligence.domain.schemas import (
     AllocationItem, ConcentrationMetrics, DataCompletenessWarning,
-    HoldingSnapshot, PortfolioAnalysisResult, PortfolioSnapshot,
+    HoldingAnalysis, HoldingSnapshot, PortfolioAnalysisResult, PortfolioSnapshot,
 )
 
 STALE_NAV_DAYS = 7   # same lookback convention used throughout mutual_fund
@@ -47,6 +47,33 @@ def _bucket(holdings: list[HoldingSnapshot], key_fn, value_fn) -> list[Allocatio
                        percent=round(v / grand_total * 100, 1) if grand_total else 0.0)
         for label, v in sorted(totals.items(), key=lambda kv: -kv[1])
     ]
+
+
+def _round_or_none(value: float | None, digits: int = 2) -> float | None:
+    return round(value, digits) if value is not None else None
+
+
+def _holding_rows(holdings: list[HoldingSnapshot], total_value: float) -> list[HoldingAnalysis]:
+    """
+    One row per holding, largest value first. A holding with no live price
+    (unresolved scheme) gets weight/gain = None rather than a misleading 0.
+    gain_percent is None when cost is 0 or unknown - never a division error.
+    """
+    rows: list[HoldingAnalysis] = []
+    for h in holdings:
+        priced = h.is_scheme_resolved and bool(h.market_value)
+        weight = round(h.market_value / total_value * 100, 1) if priced and total_value else None
+        gain = round(h.market_value - h.cost_basis, 2) if priced and h.cost_basis is not None else None
+        gain_percent = round(gain / h.cost_basis * 100, 2) if gain is not None and h.cost_basis else None
+        rows.append(HoldingAnalysis(
+            scheme_name=h.scheme_name, isin=h.isin, amc_name=h.amc_name, category=h.category,
+            market_value=round(h.market_value, 2), weight_percent=weight,
+            cost_basis=_round_or_none(h.cost_basis), gain=gain, gain_percent=gain_percent,
+            ret_1y=_round_or_none(h.ret_1y), cagr_3y=_round_or_none(h.cagr_3y),
+            expense_ratio=_round_or_none(h.expense_ratio), is_scheme_resolved=h.is_scheme_resolved,
+        ))
+    rows.sort(key=lambda r: r.market_value, reverse=True)
+    return rows
 
 
 def _herfindahl_index(percentages: list[float]) -> float:
@@ -167,4 +194,5 @@ def analyze_portfolio(snapshot: PortfolioSnapshot) -> PortfolioAnalysisResult:
         portfolio_weighted_volatility_1y=portfolio_weighted_volatility_1y,
         warnings=warnings,
         not_computed=sorted(_NOT_COMPUTED),
+        holdings=_holding_rows(snapshot.holdings, total_value),
     )

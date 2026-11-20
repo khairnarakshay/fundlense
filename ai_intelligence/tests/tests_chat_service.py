@@ -1,9 +1,12 @@
 # ai_intelligence/tests/test_chat_service.py
 """
-Tests for Phase 4's chat service. Uses a FakeLLMProvider stub (no real network
-call) injected via ask_portfolio_question's provider= parameter, and patches
-build_portfolio_snapshot/analyze_portfolio so this stays fully DB-free - the
-analysis engine itself is already covered separately in test_analysis_engine.py.
+Tests for Phase 4's chat service. Uses a FakeChatModel stub (no real network
+call) injected via ask_portfolio_question's chat_model= parameter - anything
+with an .invoke(messages) -> object-with-.content method works, matching
+LangChain's own BaseChatModel interface by duck typing rather than needing to
+subclass it. build_portfolio_snapshot/analyze_portfolio are patched so this
+stays fully DB-free - the analysis engine itself is already covered
+separately in test_analysis_engine.py.
 """
 from datetime import datetime, timezone
 from unittest.mock import patch
@@ -11,34 +14,27 @@ from unittest.mock import patch
 from django.test import SimpleTestCase
 
 from ai_intelligence.application.chat_service import ChatInputError, ask_portfolio_question
-from ai_intelligence.domain.schemas import (
-    ConcentrationMetrics, DataCompletenessWarning, GenerationResult,
-    PortfolioAnalysisResult, ProviderHealth,
-)
-from ai_intelligence.llm.interfaces import LLMProvider
+from ai_intelligence.domain.schemas import ConcentrationMetrics, DataCompletenessWarning, PortfolioAnalysisResult
 
 NOW = datetime(2026, 10, 22, tzinfo=timezone.utc)
 
 
-class FakeLLMProvider(LLMProvider):
+class _FakeAIMessage:
+    def __init__(self, content):
+        self.content = content
+
+
+class FakeChatModel:
     """Records the messages it was called with, so tests can inspect exactly
     what grounding context reached the 'model'."""
 
     def __init__(self, response_text="This is a fake answer."):
-        super().__init__(model_id="fake-model")
         self.response_text = response_text
         self.last_messages = None
 
-    @property
-    def provider_name(self):
-        return "fake"
-
-    def generate(self, messages, params=None):
+    def invoke(self, messages):
         self.last_messages = messages
-        return GenerationResult(content=self.response_text, provider="fake", model_id="fake-model")
-
-    def health_check(self):
-        return ProviderHealth(healthy=True, provider="fake", model_id="fake-model", checked_at=NOW)
+        return _FakeAIMessage(self.response_text)
 
 
 def _full_analysis() -> PortfolioAnalysisResult:
@@ -68,15 +64,15 @@ def _empty_analysis() -> PortfolioAnalysisResult:
 class ChatInputValidationTests(SimpleTestCase):
     def test_empty_question_raises(self):
         with self.assertRaises(ChatInputError):
-            ask_portfolio_question(user=object(), question="", provider=FakeLLMProvider())
+            ask_portfolio_question(user=object(), question="", chat_model=FakeChatModel())
 
     def test_whitespace_only_question_raises(self):
         with self.assertRaises(ChatInputError):
-            ask_portfolio_question(user=object(), question="   ", provider=FakeLLMProvider())
+            ask_portfolio_question(user=object(), question="   ", chat_model=FakeChatModel())
 
     def test_too_long_question_raises(self):
         with self.assertRaises(ChatInputError):
-            ask_portfolio_question(user=object(), question="x" * 3000, provider=FakeLLMProvider())
+            ask_portfolio_question(user=object(), question="x" * 3000, chat_model=FakeChatModel())
 
 
 class ChatGroundingTests(SimpleTestCase):
@@ -85,9 +81,9 @@ class ChatGroundingTests(SimpleTestCase):
     def test_grounding_context_includes_verified_numbers(self, mock_snapshot, mock_analyze):
         mock_snapshot.return_value = object()
         mock_analyze.return_value = _full_analysis()
-        fake = FakeLLMProvider()
+        fake = FakeChatModel()
 
-        ask_portfolio_question(user=object(), question="What is my portfolio worth?", provider=fake)
+        ask_portfolio_question(user=object(), question="What is my portfolio worth?", chat_model=fake)
 
         system_message = fake.last_messages[0].content
         self.assertIn("11000.0", system_message)       # total_value, verbatim
@@ -99,9 +95,9 @@ class ChatGroundingTests(SimpleTestCase):
     def test_empty_portfolio_grounds_without_crashing(self, mock_snapshot, mock_analyze):
         mock_snapshot.return_value = object()
         mock_analyze.return_value = _empty_analysis()
-        fake = FakeLLMProvider()
+        fake = FakeChatModel()
 
-        result = ask_portfolio_question(user=object(), question="How is my portfolio doing?", provider=fake)
+        result = ask_portfolio_question(user=object(), question="How is my portfolio doing?", chat_model=fake)
 
         self.assertIn("no holdings", fake.last_messages[0].content.lower())
         self.assertEqual(result["answer"], fake.response_text)
@@ -111,12 +107,10 @@ class ChatGroundingTests(SimpleTestCase):
     def test_response_shape(self, mock_snapshot, mock_analyze):
         mock_snapshot.return_value = object()
         mock_analyze.return_value = _full_analysis()
-        fake = FakeLLMProvider(response_text="Your portfolio is worth 11000.")
+        fake = FakeChatModel(response_text="Your portfolio is worth 11000.")
 
-        result = ask_portfolio_question(user=object(), question="value?", provider=fake)
+        result = ask_portfolio_question(user=object(), question="value?", chat_model=fake)
 
         self.assertEqual(result["answer"], "Your portfolio is worth 11000.")
-        self.assertEqual(result["provider"], "fake")
-        self.assertEqual(result["model_id"], "fake-model")
         self.assertIn("xirr", result["not_computed"])
         self.assertEqual(result["as_of"], NOW.isoformat())

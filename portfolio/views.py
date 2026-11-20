@@ -1,10 +1,13 @@
 # cas_parser/api/views.py
 import logging
+from collections import defaultdict
+from datetime import timedelta
+
 from django.db.models import Count, Sum
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.views import APIView
 from django.utils import timezone
-from cas_parser.models import CASStatement, CASTransaction
+from cas_parser.models import CASStatement, CASTransaction, CASSchemeHolding
 from cas_parser.services.get_invested_schems import get_invested_schemes
 from portfolio.services.api_services.value_history import get_portfolio_history, get_invested_series, _parse_period, \
     get_value_series
@@ -16,15 +19,234 @@ from portfolio.services.api_services.insights import top_and_needs_attention
 from portfolio.services.api_services.returns_by_category import returns_by_category
 
 logger = logging.getLogger(__name__)
+def _iter_user_transactions(user, **extra_filters):
+    qs = (
+        CASTransaction.objects
+        .filter(holding__folio__statement__user=user, **extra_filters)
+        .select_related("holding__folio")
+        .order_by("transaction_date", "id")
+    )
+    seen = set()
+    for tx in qs.iterator():
+        key = (
+            tx.transaction_hash or f"id:{tx.id}",
+            tx.holding.folio.folio_number,
+            tx.holding.folio.amc_name,
+        )
+        if key in seen:
+            continue
+        seen.add(key)
+        yield tx
 
+
+# ===========================================================================
+# XIRR
+# ===========================================================================
+_IGNORE_KEYWORDS = (
+    "stamp duty", "stamp", "gst", "reversal", "rejection",
+    "reinvest", "dividend reinvest", "idcw reinvest",
+)
+_DIVIDEND_KEYWORDS = ("dividend", "idcw", "payout")
+
+
+def _classify_cashflow(tx):
+    """
+    Signed cash flow from the investor's perspective:
+        negative  → outflow  (money invested by user)
+        positive  → inflow   (money returned to user)
+         0.0      → ignore   (reinvestment / charges / reversals)
+
+    Units sign is the primary classifier in CAS data — it's the most reliable
+    signal because amounts are usually positive in the raw CAS for both
+    purchases and redemptions.  Keyword fallbacks only handle dividend
+    payouts (which carry units == 0 but are a genuine inflow).
+    """
+    text = f"{(tx.transaction_type or '').lower()} {(tx.description or '').lower()}"
+    amount = float(tx.amount or 0)
+    units = float(tx.units or 0)
+
+    # Dividend reinvestment / IDCW reinvestment: user received units but no
+    # cash left or entered their bank account → no net cash flow.
+    # Stamp duty / GST / STT / reversals: fees or corrections → no cash flow.
+    if any(k in text for k in _IGNORE_KEYWORDS):
+        return 0.0
+
+    # Pure dividend payout (or "Dividend" without "reinvest") → inflow.
+    if any(k in text for k in _DIVIDEND_KEYWORDS):
+        return abs(amount) if amount else 0.0
+
+    if amount == 0:
+        return 0.0
+
+    # Units-driven classification (also correctly nets switch-out / switch-in
+    # pairs to zero across the portfolio, since +X in one scheme cancels
+    # -X in another).
+    if units > 0:
+        return -abs(amount)   # purchase / SIP → outflow
+    if units < 0:
+        return abs(amount)    # redemption → inflow
+
+    # units == 0, non-dividend → charge / tax → ignore
+    return 0.0
+
+
+def _xnpv(rate, cashflows):
+    if rate <= -1:
+        return float("inf")
+    d0 = cashflows[0][0]
+    return sum(cf / (1.0 + rate) ** ((d - d0).days / 365.0) for d, cf in cashflows)
+
+
+def _compute_xirr(cashflows):
+    """Bisection solver. Returns annualized % (e.g. 12.5) or None."""
+    if not cashflows:
+        return None
+    if not (any(cf < 0 for _, cf in cashflows) and any(cf > 0 for _, cf in cashflows)):
+        return None  # XIRR undefined without both directions
+
+    cashflows = sorted(cashflows, key=lambda x: x[0])
+
+    low, high = -0.9999, 1.0
+    f_low = _xnpv(low, cashflows)
+    f_high = _xnpv(high, cashflows)
+
+    if f_low * f_high > 0:
+        for high_try in (10.0, 50.0, 100.0, 1000.0):
+            f_high = _xnpv(high_try, cashflows)
+            if f_low * f_high <= 0:
+                high = high_try
+                break
+        else:
+            return None  # no sign change → no meaningful IRR
+
+    for _ in range(200):
+        mid = (low + high) / 2
+        f_mid = _xnpv(mid, cashflows)
+        if abs(f_mid) < 1e-7:
+            return round(mid * 100, 2)
+        if f_low * f_mid < 0:
+            high = mid
+        else:
+            low = mid
+            f_low = f_mid
+
+    return round(((low + high) / 2) * 100, 2)
+
+
+def get_portfolio_xirr(user, current_value):
+    """
+    XIRR over the investor's full cash-flow history + today's portfolio
+    value as the terminal inflow.
+
+    `current_value` should be the live (ISIN-resolved) portfolio value.
+    If the portfolio has been fully redeemed, pass 0 and the function will
+    compute the realized return from flows alone.
+    """
+    cashflows = []
+    for tx in _iter_user_transactions(user):
+        cf = _classify_cashflow(tx)
+        if cf != 0.0:
+            cashflows.append((tx.transaction_date, cf))
+
+    if current_value and current_value > 0:
+        cashflows.append((timezone.now().date(), float(current_value)))
+
+    return _compute_xirr(cashflows)
+
+
+# ===========================================================================
+# SIP detection
+# ===========================================================================
+def get_sip_summary(user):
+    """
+    Detect active SIPs from recurring purchase patterns.
+
+    An "active SIP" per holding is defined as:
+      • ≥ 2 purchase-like transactions in the last 120 days,
+      • spanning ≥ 2 distinct year-months (proves a recurring pattern),
+      • whose latest transaction is within 45 days (proves still active).
+
+    Because CAS doesn't always tag transactions as "SIP" explicitly, the
+    detection is pattern-based.  A lumpsum spread over a few months could
+    theoretically be misread — but the 3-month lookback + distinct-month
+    requirement is a reasonable balance.
+
+    Returns (monthly_sip_total, active_sip_funds):
+      • monthly_sip_total  — sum of average transaction amounts across
+                             every active SIP holding.
+      • active_sip_funds   — count of DISTINCT schemes (not holdings) with
+                             an active SIP, so the same scheme held under
+                             multiple folios is counted once.
+    """
+    today = timezone.now().date()
+    lookback_start = today - timedelta(days=120)
+
+    by_holding = defaultdict(list)
+    for tx in _iter_user_transactions(
+        user,
+        transaction_date__gte=lookback_start,
+        units__gt=0,
+    ):
+        # Exclude non-purchase rows that can carry positive units
+        text = f"{(tx.transaction_type or '').lower()} {(tx.description or '').lower()}"
+        if any(k in text for k in ("reinvest", "dividend", "idcw", "stamp", "reversal")):
+            continue
+        if not tx.amount or float(tx.amount) <= 0:
+            continue
+        by_holding[tx.holding_id].append(tx)
+
+    active_holding_amounts = {}    # holding_id → avg monthly amount
+    for holding_id, txs in by_holding.items():
+        if len(txs) < 2:
+            continue
+        latest = max(t.transaction_date for t in txs)
+        if (today - latest).days > 45:
+            continue
+        months = {(t.transaction_date.year, t.transaction_date.month) for t in txs}
+        if len(months) < 2:
+            continue
+        amounts = [float(t.amount) for t in txs]
+        active_holding_amounts[holding_id] = sum(amounts) / len(amounts)
+
+    monthly_sip_total = round(sum(active_holding_amounts.values()), 2)
+
+    if not active_holding_amounts:
+        return monthly_sip_total, 0
+
+    # Dedupe to distinct schemes for the count
+    active_funds = set()
+    for holding_id, scheme_id, isin in (
+        CASSchemeHolding.objects
+        .filter(id__in=active_holding_amounts.keys())
+        .values_list("id", "scheme_id", "isin")
+    ):
+        if scheme_id:
+            active_funds.add(("scheme", scheme_id))
+        else:
+            active_funds.add(("isin", isin or f"holding:{holding_id}"))
+
+    return monthly_sip_total, len(active_funds)
+
+
+# ===========================================================================
+# API View
+# ===========================================================================
 class PortfolioSummaryAPIView(APIView):
     """
     GET /api/portfolio/summary/
     Powers the top-left value/invested/gain/holdings/expense-ratio cards.
 
-    real_xirr, monthly_sip_total, active_sip_funds are returned as null - each needs
-    the transaction_type / sign-convention confirmation noted in the response, not
-    built blind to avoid shipping a wrong number on a fintech dashboard.
+    real_xirr
+        Annualized XIRR (%) computed from every cash flow the investor has
+        made (purchases = outflow, redemptions + dividend payouts = inflow,
+        dividend reinvestment & stamp duty = ignored) plus today's live
+        portfolio value as the terminal inflow.  Units sign is the primary
+        classifier, not transaction_type text, so switch-ins/outs correctly
+        net to zero across the portfolio.  Returns None when not computable
+        (fewer than 2 flows, or no sign change).
+
+    monthly_sip_total / active_sip_funds
+        Detected from recurring purchase transactions — see get_sip_summary().
     """
     permission_classes = [IsAuthenticated]
 
@@ -36,7 +258,7 @@ class PortfolioSummaryAPIView(APIView):
 
             for h in holdings:
                 value = float(market_value(h) or 0)
-                live_value = float(live_market_value(h) or 0)  # fresh ISIN-resolved, today's NAV
+                live_value = float(live_market_value(h) or 0)   # fresh ISIN-resolved, today's NAV
                 cost = float(cost_basis(h) or 0)
                 total_value += value
                 total_live_value += live_value
@@ -45,43 +267,36 @@ class PortfolioSummaryAPIView(APIView):
                 if stat and stat.expense_ratio is not None:
                     expense_weighted += value * float(stat.expense_ratio)
                     expense_weight_base += value
-                print("--"*50)
-                print("H",h)
-                print("amfi_code","    ","isin")
-                print(h.amfi_code,"    " ,h.isin)
-                print("value", value)
-                print("live_value", live_value)
-                print("cost", cost)
-                print("--" * 50)
 
             gain = total_value - total_cost
             gain_percent = (gain / total_cost * 100) if total_cost else None
 
-            current_gain = total_live_value - total_cost  # NEW - based on live value
+            current_gain = total_live_value - total_cost
             current_gain_percent = (current_gain / total_cost * 100) if total_cost else None
 
             expense_ratio = (expense_weighted / expense_weight_base) if expense_weight_base else None
 
+            # ---- NEW: XIRR against live value (fallback to stored value) ----
+            terminal_value = total_live_value or total_value
+            real_xirr = get_portfolio_xirr(request.user, terminal_value)
+
+            # ---- NEW: SIP summary ------------------------------------------
+            monthly_sip_total, active_sip_funds = get_sip_summary(request.user)
+            print(f"Monthly SIP Total: {monthly_sip_total}, Active SIP Funds: {active_sip_funds}")
             now = timezone.now()
             data = {
-                "portfolio_value": round(total_value, 2),  # kept - original meaning/calc
-                "total_gain": round(gain, 2),  # kept - original meaning/calc
+                "portfolio_value": round(total_value, 2),
+                "total_gain": round(gain, 2),
                 "total_gain_percent": round(gain_percent, 2) if gain_percent is not None else None,
-                # NEW: current holdings' live value - units held x TODAY's NAV, scheme
-                # re-resolved fresh per ISIN rather than trusting each holding's stored
-                # scheme_id (see live_market_value in holdings.py for why that matters).
                 "current_portfolio_value": round(total_live_value, 2),
                 "current_total_gain": round(current_gain, 2),
-                "current_total_gain_percent": round(current_gain_percent,
-                                                    2) if current_gain_percent is not None else None,
+                "current_total_gain_percent": round(current_gain_percent, 2) if current_gain_percent is not None else None,
                 "invested": round(total_cost, 2),
                 "holdings_count": len(holdings),
                 "expense_ratio": round(expense_ratio, 2) if expense_ratio is not None else None,
-                "real_xirr": None,
-                "monthly_sip_total": None,
-                "active_sip_funds": None,
-                # mutual funds publish one NAV per day (T-1, released the next morning),
-                # so "as of now" reflects the latest AVAILABLE NAV, not a live intraday price.
+                "real_xirr": real_xirr,
+                "monthly_sip_total": monthly_sip_total,
+                "active_sip_funds": active_sip_funds,
                 "as_of_date": now.date(),
                 "as_of_time": now,
             }

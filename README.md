@@ -1,119 +1,373 @@
-# FundLense – AI-Powered Personal Investment Analysis Platform
+# FundLense AI – AI-Powered Mutual Fund Portfolio Intelligence
 
-**FundLense** is an AI-powered personal investment analysis platform designed to help investors understand and analyze their mutual fund and stock market investments through a unified dashboard.
+FundLense AI is the artificial intelligence layer of FundLense, designed to transform mutual fund portfolio data into understandable, contextual and knowledge-grounded insights.
 
-Investors often maintain their investment information across multiple platforms, such as CDSL, NSDL and different mutual fund accounts. Manually reviewing these statements, tracking portfolio allocation and understanding investment performance can be time-consuming.
+Instead of relying on an LLM to calculate financial metrics, FundLense follows a **deterministic analysis + Generative AI** approach:
 
-FundLense aims to simplify this process by processing investment statements, organizing portfolio information and using Generative AI to provide personalized investment insights.
+- Python computes portfolio metrics using verified financial data.
+- LLMs explain the computed results in natural language.
+- Retrieval-Augmented Generation (RAG) provides a foundation for answering questions using curated financial knowledge.
+- PostgreSQL with pgvector stores and retrieves document embeddings.
+- User-level data isolation protects private portfolio and knowledge-base information.
 
-> **Project Status:** Under Development
+The goal is to make investment data easier to understand through AI while keeping financial calculations traceable and separate from LLM-generated explanations.
+
+**Repository:** [FundLense](https://github.com/khairnarakshay/fundlense)
 
 ---
 
 ## 1. The Problem
 
-Investors often face several challenges when managing their investments:
+Investors often have mutual fund statements containing holdings, transactions, invested amounts, NAV information and other financial details.
 
-- Investment information is scattered across multiple platforms.
-- Reviewing CDSL, NSDL and Consolidated Account Statements (CAS) manually takes time.
-- Understanding overall portfolio allocation requires manual analysis.
-- Tracking investments across different asset categories is difficult.
-- Extracting meaningful insights from large investment statements is not straightforward.
+Understanding this information manually can be difficult. Investors may need to:
 
-FundLense aims to address these challenges through automated statement processing and AI-powered portfolio analysis.
+- Review multiple mutual fund holdings.
+- Understand asset allocation and AMC exposure.
+- Identify portfolio concentration.
+- Compare invested amounts with current portfolio value.
+- Understand financial terminology and portfolio metrics.
+- Find relevant information from financial documents.
 
-## 2. The Solution
+Traditional dashboards can display numbers, but they do not always explain what those numbers mean.
 
-FundLense provides a centralized platform where users can process their investment statements and view their investment information in an organized format.
+**FundLense AI aims to bridge this gap by combining structured financial analysis with Generative AI and document retrieval.**
 
-The platform aims to:
+## 2. AI Architecture
 
-- Process CDSL, NSDL and Consolidated Account Statements (CAS).
-- Extract and organize investment-related information.
-- Generate personalized investment dashboards.
-- Analyze portfolio information using Large Language Models (LLMs).
-- Apply Retrieval-Augmented Generation (RAG) to provide context-aware investment insights.
-- Present investment information in an understandable format.
+The AI layer is organized into separate components for portfolio analysis, LLM integration, RAG, embeddings, memory and prompt management.
 
-## 3. Key Features
+```text
+                 FUNDLENSE AI
+                       |
+          +------------+------------+
+          |                         |
+   Portfolio Intelligence      Knowledge Base
+          |                         |
+   Portfolio Snapshot          Documents
+          |                         |
+   Deterministic Analysis       Text Extraction
+          |                         |
+   Verified Metrics             Chunking
+          |                         |
+          |                      Embeddings
+          |                         |
+          |                    PostgreSQL
+          |                     + pgvector
+          |                         |
+          +------------+------------+
+                       |
+                AI Context Layer
+                       |
+                LangChain LLM
+                       |
+             Natural Language Output
+                       |
+             Portfolio Insights / Chat
+```
 
-### Investment Statement Processing
-- Support for CDSL statements.
-- Support for NSDL statements.
-- Support for Consolidated Account Statements (CAS).
-- Extraction and organization of investment information.
+*Conceptual architecture of the AI layer. The RAG subsystem and portfolio-aware LLM services are separate components in the current codebase; they are not yet connected into one unified RAG chat pipeline.*
 
-### Portfolio Analysis
-- Centralized investment dashboard.
-- Consolidated portfolio information.
-- Portfolio analysis and personalized insights.
-- Simplified presentation of investment data.
+## 3. Core AI Capabilities
 
-### Generative AI Integration
-- LLM-powered investment analysis.
-- Retrieval-Augmented Generation (RAG).
-- Context-aware investment insights.
-- Personalized responses based on available investment information.
+### 3.1 Deterministic Portfolio Analysis
 
-## 4. Technology Stack
+FundLense does not ask an LLM to calculate financial numbers.
 
-| Category | Technologies |
+The portfolio analysis engine uses Python to process a structured portfolio snapshot and calculate metrics independently of any LLM provider.
+
+Current analysis includes:
+
+- Total portfolio value.
+- Total invested amount.
+- Overall gain or loss and gain percentage.
+- Holding-level market value and portfolio weight.
+- Asset-type allocation.
+- AMC allocation.
+- Largest holding and AMC exposure.
+- Portfolio concentration using the Herfindahl-Hirschman Index (HHI).
+- Weighted expense ratio.
+- Data completeness warnings, including unresolved schemes and stale NAV information.
+
+Some metrics, such as XIRR, SIP classification and portfolio overlap, are explicitly reported as not computed where the required data assumptions are not yet confirmed.
+
+**Key design principle:** Financial calculations remain in deterministic Python code. The LLM is not responsible for generating or modifying those numbers.
+
+### 3.2 LLM-Powered Portfolio Insights
+
+FundLense uses LangChain to integrate with configurable Large Language Model providers.
+
+Supported providers in the current implementation:
+
+- Hugging Face
+- Groq
+- Google Gemini
+
+The provider factory creates a LangChain chat model from validated configuration. The application uses LangChain's standard interfaces, allowing the provider to be changed without rewriting the downstream application services.
+
+AI-powered functionality includes:
+
+- Natural-language portfolio explanations.
+- Portfolio-related question answering.
+- Structured portfolio report generation.
+- Plain-language explanations of allocation and concentration.
+- Data-quality observations and points for the investor to review.
+
+The model receives a verified portfolio analysis as context and is instructed not to invent missing values or perform new financial calculations.
+
+### 3.3 Retrieval-Augmented Generation (RAG)
+
+FundLense contains a modular RAG subsystem for retrieving relevant information from an approved knowledge base.
+
+The RAG pipeline follows these stages:
+
+1. **Document ingestion:** Accepts document content through the ingestion service.
+2. **Text normalization:** Cleans extracted text and normalizes line endings and whitespace.
+3. **Chunking:** Splits documents into smaller, overlapping text chunks.
+4. **Embedding generation:** Converts chunks into numerical vector representations.
+5. **Vector storage:** Stores document chunks and embeddings in PostgreSQL using pgvector.
+6. **Semantic retrieval:** Converts a user question into an embedding and retrieves relevant chunks using cosine distance.
+7. **Context preparation:** Returns relevant, typed retrieval results for downstream AI services.
+
+Supported document formats in the extraction module:
+
+- PDF
+- Markdown
+- TXT
+
+The ingestion service also supports document checksums, unchanged-document detection, re-indexing and atomic replacement of document chunks.
+
+**Important:** The RAG ingestion and retrieval services are implemented as a separate subsystem. The current portfolio chat service does not yet invoke this retrieval pipeline, so it should not be described as a fully integrated RAG-powered portfolio chatbot.
+
+### 3.4 Embedding Providers
+
+The embedding factory supports multiple embedding backends:
+
+| Provider | Purpose |
 |---|---|
-| Programming Language | Python |
-| Backend Framework | Django |
-| Database | PostgreSQL |
-| Generative AI | Large Language Models (LLMs) |
-| AI Architecture | Retrieval-Augmented Generation (RAG) |
-| Version Control | Git, GitHub |
-| API Architecture | REST APIs |
+| FastEmbed | Local ONNX-based embedding generation |
+| Google Gemini | Hosted embedding generation |
+| Fake embeddings | Deterministic feature hashing for tests and plumbing checks |
 
-*The technology stack may evolve as development progresses.*
+The default FastEmbed model configured in the code is `BAAI/bge-small-en-v1.5`, which produces 384-dimensional embeddings.
 
-## 5. High-Level Workflow
+The implementation validates embedding dimensions before storage and associates each vector with its embedding model identifier.
 
-1. User uploads investment statements.
-2. The system processes supported CDSL, NSDL and CAS documents.
-3. Investment information is extracted and organized.
-4. Portfolio information is prepared for analysis.
-5. LLMs and RAG are used to generate context-aware insights.
-6. The user accesses personalized investment information through the dashboard.
+Fake embeddings are not semantic embeddings and should not be used for production knowledge retrieval.
 
-## 6. Project Structure
+### 3.5 PostgreSQL + pgvector
 
-The repository structure and individual modules are being developed alongside the application.
+FundLense uses PostgreSQL with the pgvector extension for persistent vector storage.
 
-## 7. Installation and Setup
+The RAG data model includes:
 
-FundLense is currently under active development. Detailed installation instructions, environment configuration, database migrations and execution commands will be documented as the application setup is finalized.
+- `KnowledgeDocument` – document metadata and normalized source content.
+- `KnowledgeChunk` – chunk content, embedding and associated metadata.
 
-## 8. Project Objectives
+Vector retrieval uses cosine distance and an HNSW index.
 
-- Simplify personal investment analysis.
-- Reduce manual effort involved in reviewing investment statements.
-- Provide a unified view of investment information.
-- Explore practical applications of Generative AI in financial technology.
-- Build a scalable backend application for investment analytics.
+The vector store also enforces visibility rules:
 
-## 9. Future Enhancements
+- Shared knowledge documents can be retrieved by users.
+- Private knowledge documents are restricted to their owner.
+- Queries only compare vectors generated by the currently configured embedding model.
 
-Planned improvements include:
+### 3.6 AI Conversation Memory
 
-- Expanded investment statement support.
-- Enhanced portfolio dashboards.
-- More detailed portfolio analysis.
-- Improved AI-powered investment insights.
-- Additional financial data integrations.
+The repository includes a persistent memory design with three complementary techniques:
 
-## 10. Disclaimer
+**Sliding Window**
+- Keeps recent messages within a configurable token budget.
+- Estimates token usage to control prompt size.
 
-FundLense is an independent development project intended for investment information organization and analysis.
+**Rolling Conversation Summary**
+- Compresses older conversation history into a summary.
+- Keeps recent messages available verbatim.
 
-The insights generated by the application should not be considered guaranteed investment returns or professional financial advice. Users should independently evaluate investment decisions.
+**Long-Term User Memory**
+- Extracts explicitly stated user goals, investment horizons and preferences.
+- Validates extracted information before storage.
+- Deduplicates memories and applies a per-user limit.
+
+Conversation and memory models are present in the codebase, along with supporting storage and memory services. However, the current chat endpoint is still single-turn and does not yet wire these memory components into its request flow.
 
 ---
 
-**Developed by:** Akshay Khairnar
+## 4. AI Safety and Reliability
 
-**Domain:** FinTech | Backend Development | Generative AI
+Financial applications require more than good prompts. They need reliable calculations, clear boundaries and data isolation.
 
-**Project:** FundLense – AI-Powered Personal Investment Analysis Platform
+FundLense applies several safeguards:
+
+### Grounded Responses
+The LLM is instructed to use only verified portfolio information provided by the application.
+
+### No AI-Based Financial Calculations
+Financial metrics are calculated by Python services, not generated by the model.
+
+### No Personalized Buy/Sell Advice
+The AI layer is instructed not to recommend buying, selling, switching or redeeming specific mutual funds.
+
+### Facts vs. Interpretation
+The model is instructed to distinguish verified financial facts from its own explanations.
+
+### User-Level Data Isolation
+AI endpoints require authentication. Portfolio information is fetched for the authenticated user, and private RAG chunks are filtered at the database query level.
+
+### RAG Input Screening
+The ingestion and retrieval modules include prompt-injection screening for suspicious document chunks.
+
+### Data Completeness Warnings
+Unresolved schemes and stale NAV data are surfaced rather than silently treated as accurate values.
+
+---
+
+## 5. Technology Stack
+
+| Category | Technologies |
+|---|---|
+| Backend | Python, Django, Django REST Framework |
+| LLM Integration | LangChain |
+| LLM Providers | Hugging Face, Groq, Google Gemini |
+| RAG | Document ingestion, text chunking, semantic retrieval |
+| Embeddings | FastEmbed, Google Gemini |
+| Vector Database | PostgreSQL, pgvector |
+| Vector Search | Cosine Distance, HNSW |
+| Data Validation | Pydantic |
+| Document Processing | PDF, Markdown, TXT extraction |
+| API Security | Django authentication, DRF permissions |
+| Configuration | Environment-based AI provider configuration |
+
+## 6. AI Module Structure
+
+```text
+ai_intelligence/
+│
+├── application/
+│   ├── chat_service.py
+│   ├── portfolio_analysis_service.py
+│   └── portfolio_report_service.py
+│
+├── domain/
+│   ├── policies.py
+│   ├── schemas.py
+│   └── exceptions.py
+│
+├── embeddings/
+│   └── factory.py
+│
+├── llm/
+│   ├── configuration.py
+│   └── factory.py
+│
+├── memory/
+│   ├── context_window.py
+│   ├── conversation_store.py
+│   ├── long_term.py
+│   └── summarizer.py
+│
+├── portfolio/
+│   ├── analysis_engine.py
+│   └── context_builder.py
+│
+├── prompts/
+│   ├── system.py
+│   └── portfolio_report.py
+│
+├── rag/
+│   ├── chunking.py
+│   ├── ingestion.py
+│   ├── retrieval.py
+│   └── vector_store.py
+│
+├── models.py
+├── urls.py
+└── views.py
+```
+
+## 7. AI API Endpoints
+
+The AI module exposes authenticated REST API endpoints.
+
+| Endpoint | Method | Purpose |
+|---|---|---|
+| `/api/ai/portfolio-analysis/` | POST | Returns deterministic portfolio analysis |
+| `/api/ai/portfolio-report/` | POST | Returns portfolio metrics with an LLM-generated narrative |
+| `/api/ai/chat/` | POST | Answers a question using the authenticated user's current portfolio analysis |
+
+All three endpoints require authentication.
+
+### Example: Portfolio Chat
+
+**Request**
+
+```http
+POST /api/ai/chat/
+Content-Type: application/json
+```
+
+```json
+{
+  "question": "Explain my current mutual fund portfolio allocation."
+}
+```
+
+The application builds the authenticated user's portfolio snapshot, runs deterministic analysis, prepares a grounded prompt and invokes the configured LLM.
+
+The response contains the AI-generated answer, analysis date, warnings and metrics that were not computed.
+
+## 8. Configuration
+
+The LLM provider is configured through Django settings populated from environment variables.
+
+Example configuration:
+
+```env
+AI_LLM_PROVIDER=groq
+AI_LLM_MODEL_ID=your-model-id
+AI_LLM_API_TOKEN=your-api-token
+AI_LLM_TEMPERATURE=0.1
+AI_LLM_TIMEOUT_SECONDS=60
+```
+
+Supported `AI_LLM_PROVIDER` values:
+
+- `huggingface`
+- `groq`
+- `gemini`
+
+RAG embedding configuration is handled separately:
+
+```env
+AI_EMBEDDING_PROVIDER=fastembed
+AI_EMBEDDING_MODEL_ID=BAAI/bge-small-en-v1.5
+AI_EMBEDDING_DIMENSIONS=384
+```
+
+For Gemini embeddings, configure the corresponding embedding API token.
+
+Do not commit `.env` files, API tokens, database passwords or Django secrets to source control.
+
+## 9. Current Implementation Status
+
+| Component | Status |
+|---|---|
+| Deterministic portfolio analysis | Implemented |
+| LLM provider abstraction | Implemented |
+| Portfolio-aware AI chat | Implemented |
+| Structured AI portfolio report | Implemented |
+| Per-user report caching | Implemented |
+| RAG document extraction and chunking | Implemented |
+| Embedding provider abstraction | Implemented |
+| PostgreSQL + pgvector storage | Implemented |
+| Semantic vector retrieval | Implemented |
+| Prompt-injection screening in RAG | Implemented |
+| Conversation persistence services | Present; not wired into current chat endpoint |
+| Rolling conversation summary | Supporting module present |
+| Long-term user memory | Supporting module present |
+| RAG-grounded portfolio chat | Integration pending |
+
+## 10. Project Vision
+
+The long-term direction of FundLense AI is to build a context-aware financial intelligence assistant that can combine:
+

@@ -43,3 +43,15 @@ class StructuredOutputError(AIIntelligenceError):
     """Raised when a model's output could not be parsed/validated against the
     requested schema, even after an adapter's own retry (see
     providers/huggingface.py's JSON-mode fallback)."""
+
+class EmbeddingError(AIIntelligenceError):
+    """Raised when generating or handling vector embeddings fails (e.g.
+    provider errors, dimension mismatches, or empty outputs)."""
+
+class IngestionError(AIIntelligenceError):
+    """Raised when document parsing, chunking, or vector store indexing
+    fails during the RAG ingestion pipeline."""
+
+class EmbeddingConfigurationError(AIIntelligenceError):
+    """Raised by the embedding factory/configuration loader for missing or
+    invalid embedding configuration."""

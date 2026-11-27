@@ -36,3 +36,18 @@ def drop_advice_items(items: list[str]) -> tuple[list[str], int]:
     """Returns (items with advice-like entries removed, how many were removed)."""
     kept = [item for item in items if not looks_like_advice(item)]
     return kept, len(items) - len(kept)
+
+_INJECTION_PATTERN = re.compile(
+    r"("
+    r"ignore\s+(all\s+)?(previous|prior|above)\s+instructions|"
+    r"reveal\s+(your\s+)?system\s+prompt|"
+    r"</?knowledge_base>|"
+    r"\bSYSTEM\s*:"
+    r")",
+    re.IGNORECASE,
+)
+
+
+def looks_like_prompt_injection(text: str) -> bool:
+    """Returns True if text contains prompt-injection markers."""
+    return bool(_INJECTION_PATTERN.search(text))

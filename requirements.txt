@@ -50,3 +50,6 @@ urllib3==2.8.0
 
 langchain-core==1.8.5
 langchain-protocol==0.0.22
+pgvector==0.5.1
+langchain-text-splitters==1.2.0
+langchain-text-splitters==1.2.0
